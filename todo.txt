@@ -1,2 +1,3 @@
 - replace build scripts with babashka scripts
 - add script to increment build number in pdxinfo file, then build and zip the game for deploy
+- don't include .fnl files in compiled .pdx
