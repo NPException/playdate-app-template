@@ -10,8 +10,19 @@
              "-- this file is generated. do not modify manually. --\n"
              "-----------------------------------------------------\n")))
 
-; TODO: add macros for more Playdate Lua extensions, like +=, -=, etc.
+(fn set+ [local-var arg]
+  `(set ,local-var (+ ,local-var ,arg)))
+
+(fn set- [local-var arg]
+  `(set ,local-var (- ,local-var ,arg)))
+
+(fn set* [local-var arg]
+  `(set ,local-var (* ,local-var ,arg)))
+
+(fn set-div [local-var arg]
+  `(set ,local-var (/ ,local-var ,arg)))
 
 {: import
  : const
- : generated-header}
+ : generated-header
+ : set+ : set- : set* : set-div}

@@ -16,4 +16,4 @@ pd.update = function()
   end
   return gfx.fillCircleAtPoint(player.x, player.y, player.radius)
 end
-return pd.update
+return nil
