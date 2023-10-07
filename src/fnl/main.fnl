@@ -9,6 +9,8 @@
 (const pd playdate)
 (const gfx pd.graphics)
 
+; TODO: implement https://wiki.fennel-lang.org/pong
+
 (local player {:x 200 :y 120 :radius 10 :speed 3})
 
 (fn pd.update []
