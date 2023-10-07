@@ -1,1 +1,1 @@
-import "generated/main"
+import "_generated/main"
