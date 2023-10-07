@@ -22,7 +22,17 @@
 (fn set-div [local-var arg]
   `(set ,local-var (/ ,local-var ,arg)))
 
+
+; Wrap a body of code in `gfx.pushContext(img) ... gfx.popContext()`
+(fn with-context [gfx img ...]
+  `(do ((. ,gfx "pushContext") ,img)
+       (do ,...)
+       ((. ,gfx "popContext"))))
+
+
 {: import
  : const
  : generated-header
- : set+ : set- : set* : set-div}
+ : set+ : set- : set* : set-div
+ : with-context
+ }
