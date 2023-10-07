@@ -1,7 +1,7 @@
 ; Example pong game based on https://wiki.fennel-lang.org/pong ported for Playdate
 (import-macros
-  {: GENERATED_HEADER
-   : import : const}
+  {: GENERATED_HEADER : SPACER
+   : const}
   :macros)
 (GENERATED_HEADER)
 
