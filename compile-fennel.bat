@@ -1,4 +1,5 @@
 @echo OFF
+echo == Compiling Fennel ==
 if not exist src\pdx\generated\ (
   mkdir src\pdx\generated
 )
