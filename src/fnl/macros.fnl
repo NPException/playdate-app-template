@@ -4,10 +4,17 @@
 (fn const [name x]
   `(lua ,(.. "local " (tostring name) " <const> = " (tostring x))))
 
-(fn generated-header []
+(fn GENERATED_HEADER []
   `(lua ,(.. "-----------------------------------------------------\n"
              "-- this file is generated. do not modify manually. --\n"
              "-----------------------------------------------------\n")))
+
+(fn SPACER []
+  `(lua "\n"))
+
+; inserts a comment for documentation
+(fn DOC [x]
+  `(lua ,(.. "--[[ " (tostring x) " ]]--")))
 
 (fn set+ [local-var arg]
   `(set ,local-var (+ ,local-var ,arg)))
@@ -29,9 +36,7 @@
        ((. ,gfx "popContext"))))
 
 
-{: import
- : const
- : generated-header
+{: import : const
+ : GENERATED_HEADER : SPACER : DOC
  : set+ : set- : set* : set-div
- : with-context
- }
+ : with-context}
