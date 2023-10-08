@@ -6,6 +6,7 @@
              "-- File is generated. Do not modify by hand. --\n"
              "-----------------------------------------------\n")))
 
+; inserts an empty line in the generated Lua file
 (fn SPACER []
   `(lua "\n"))
 
@@ -13,15 +14,19 @@
 (fn DOC [x]
   `(lua ,(.. "--[[ " (tostring x) " ]]--")))
 
+; macro for +=
 (fn set+ [local-var arg]
   `(set ,local-var (+ ,local-var ,arg)))
 
+; macro for -=
 (fn set- [local-var arg]
   `(set ,local-var (- ,local-var ,arg)))
 
+; macro for *=
 (fn set* [local-var arg]
   `(set ,local-var (* ,local-var ,arg)))
 
+; macro for /=
 (fn set-div [local-var arg]
   `(set ,local-var (/ ,local-var ,arg)))
 

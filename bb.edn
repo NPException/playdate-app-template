@@ -1,0 +1,81 @@
+{:min-bb-version "1.3.185"
+ :tasks
+ {:init       (do (def pdx-src-dir "./src/pdx")
+                  (def fennel-src-root "./src/fnl")
+                  (def generated-src-dir (str pdx-src-dir "/_generated"))
+                  ; files in `fennel-src-root` directory which are macro modules and should not be compiled explicitly
+                  (def fennel-macro-modules ["macros.fnl"])
+                  ; output directory
+                  (def build-dir "./builds")
+                  ; detect the operating system, so it can be used where system specific code is necessary
+                  (def OS (let [os-name (str/lower-case (System/getProperty "os.name"))]
+                            (cond
+                              (str/includes? os-name "windows") :windows
+                              (str/includes? os-name "mac") :mac
+                              :else :linux)))
+                  ; check if `fennel` is available
+                  (when (nil? (fs/which "fennel"))
+                    (println "`fennel` is not available to this script. Is it installed and on the PATH?")
+                    (System/exit 1))
+                  ; TODO: load pdxinfo lines and make values accessible via a function
+                  )
+
+
+  :requires   ([clojure.string :as str]
+               [babashka.fs :as fs])
+
+
+  clean-fnl   {:doc   "Deletes the Lua files which were generated from Fennel sources."
+               :enter (println (str "Deleting `" generated-src-dir "`"))
+               :task  (fs/delete-tree generated-src-dir)}
+
+
+  compile-fnl {:doc     "Compiles all Fennel source files using `fennel`"
+               :depends [clean-fnl]
+               :enter   (println "Compiling Fennel")
+               :task    (do (fs/create-dirs generated-src-dir)
+                            (let [root (fs/real-path (fs/path fennel-src-root))
+                                  macro-modules (map (partial fs/path root) fennel-macro-modules)
+                                  fennel? (fn [path]
+                                            (= "fnl" (fs/extension path)))
+                                  macro? (fn [path]
+                                           (some (partial fs/same-file? path) macro-modules))]
+                              (fs/walk-file-tree root
+                                {:visit-file
+                                 (fn [path attrs]
+                                   (if (or (macro? path) (not (fennel? path)))
+                                     :continue
+                                     (let [rel-path-str (str (fs/relativize root path))
+                                           ; TODO: check on linux if this shell command works fine or needs a specific impl
+                                           compiled-lua (:out (shell
+                                                                {:dir fennel-src-root :out :string}
+                                                                "fennel" "--compile" rel-path-str))]
+                                       (if-not compiled-lua
+                                         :terminate
+                                         (let [[path-without-extension] (fs/split-ext rel-path-str)
+                                               lua-file (fs/path generated-src-dir (str path-without-extension ".lua"))]
+                                           (fs/create-dirs (fs/parent lua-file))
+                                           (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
+                                           :continue)))))})))}
+
+
+  clean       {:doc   "Removes the PDX build output folder"
+               :enter (println (str "Deleting `" build-dir "`"))
+               :task  (fs/delete-tree build-dir)}
+
+
+  build-pdx   {:doc     "Builds all Lua files and assets into a Playdate PDX package."
+               :enter   (println "Building PDX package")
+               :depends [clean]
+               :task    (do (fs/create-dirs build-dir)
+                            (let [pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH")]
+                              ; TODO: Use bundleID from pdxinfo instead of current working directory
+                              (shell (str pd-sdk-path "/bin/pdc") pdx-src-dir (str build-dir "/" (fs/file-name (fs/cwd))))))}
+
+  }}
+
+; TODO: - inc-build-number task
+;       - build-release task [compile-fnl bump-build build-pdx], then zip up the folder
+;       - start-simulator task
+
+; TODO (maybe): - add github action to trigger release (for latest tag on main?)
