@@ -25,12 +25,21 @@
                   (str/includes? os-name "mac") :mac
                   :else :linux)))
 
+      ; check if the Playdate SDK path is known
+      (def pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH"))
+      (when-not pd-sdk-path
+        (println "`PLAYDATE_SDK_PATH` environment variable is not set.")
+        (System/exit 1))
+
       ; check if `fennel` is available
-      (when (nil? (fs/which "fennel"))
+      (when-not (fs/which "fennel")
         (println "`fennel` is not available to this script. Is it installed and on the PATH?")
         (System/exit 1))
 
       ; TODO: load pdxinfo lines and make values accessible via a function
+
+      ; TODO: Use bundleID from pdxinfo instead of current working directory
+      (def pdx-name (str (fs/file-name (fs/cwd)) ".pdx"))
 
       ; compiles all .fnl files to lua (except macro modules) and copies other files to the generated sources directory
       (defn compile-and-copy []
@@ -70,9 +79,7 @@
       ; calls the Playdate compiler to build everything in the generated sources folder into a PDX bundle
       (defn invoke-pdc []
         (fs/create-dirs (:build-output config))
-        (let [pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH")
-              ; TODO: Use bundleID from pdxinfo instead of current working directory
-              output-path (str (fs/canonicalize (fs/path (:build-output config) (fs/file-name (fs/cwd)))))]
+        (let [output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name)))] ; pdc needs the absolute path for some reason
           (shell
             {:dir (:generated-sources config)}
             (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) output-path))))
@@ -81,13 +88,13 @@
   ;; Available Babashka Tasks
 
   clean-compiled
-  {:doc   "Deletes the generated source files."
+  {:doc   "Deletes the folder generated via the `compile` task."
    :enter (println (str "Deleting `" (:generated-sources config) "`"))
    :task  (fs/delete-tree (:generated-sources config))}
 
 
   compile
-  {:doc     "Compiles all Fennel source files using `fennel`"
+  {:doc     "Compiles all Fennel files using `fennel` and copies all other files to the `:generated-sources` directory."
    :enter   (println "Compiling Fennel")
    :depends [clean-compiled]
    :task    (compile-and-copy)}
@@ -99,16 +106,50 @@
    :task  (fs/delete-tree (:build-output config))}
 
 
-  build-pdx
-  {:doc     "Builds all Lua files and assets into a Playdate PDX package."
-   :enter   (println "Building PDX package")
+  create-pdx
+  {:doc     "Builds all files in the `:generated-sources` folder into a Playdate PDX app."
+   :enter   (println "Building PDX app")
    :depends [clean]
    :task    (invoke-pdc)}
+
+
+  build
+  {:doc "Compiles Fennel and builds everything into a Playdate PDX app."
+   :depends [compile create-pdx]}
+
+
+  copy-pdx-to-sim
+  {:doc   "Copies the PDX app to the Playdate simulator's games directory, so it can be selected in the simulator's menu."
+   :enter (println "Copying app to simulator")
+   :task  (let [source-path (fs/path (:build-output config) pdx-name)
+                ; TODO: check if this path works the same under Linux
+                target-path (fs/path pd-sdk-path "Disk/Games/User/" pdx-name)]
+            (fs/delete-tree target-path)
+            (fs/copy-tree source-path target-path))}
+
+
+  start-sim
+  {:doc   "Starts the Playdate simulator with the current app in the build output"
+   :enter (println "Starting Playdate Simulator")
+   :task  (let [pdx-path (str (fs/path (:build-output config) pdx-name))
+                ; TODO: check if this path works the same under Linux
+                sim-path (str (fs/path pd-sdk-path "bin/PlaydateSimulator"))]
+            (shell sim-path pdx-path))}
+
+
+  build-and-sim
+  {:doc "Calls the `build` task and then starts the Playdate simulator."
+   :depends [build start-sim]}
+
+
+  build-copy-sim
+  {:doc "Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator."
+   :depends [build copy-pdx-to-sim start-sim]}
+
 
   }}
 
 ; TODO: - inc-build-number task
 ;       - build-release task [compile-fnl bump-build build-pdx], then zip up the folder
-;       - start-simulator task
 
 ; TODO (maybe): - add github action to trigger release (for latest tag on main?)
