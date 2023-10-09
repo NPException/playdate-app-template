@@ -1,12 +1,11 @@
 {:min-bb-version "1.3.185"
  :tasks
- {:init       (do (def pdx-src-dir "./src/pdx")
-                  (def fennel-src-dir "./src/fnl")
-                  ; directory relative to `fennel-src-dir` where macro modules are placed. Fennel files within this directory will not be compiled directly
-                  (def fennel-macros-dir "macros")
-                  (def generated-src-dir (str pdx-src-dir "/_generated"))
+ {:init       (do (def src-dir "./src/")
+                  ; directory relative to `src-dir` where Fennel macro modules are placed. Fennel files within this directory will not be compiled directly
+                  (def fennel-macros-dir "macros/")
+                  (def generated-src-dir "./generated/")
                   ; output directory
-                  (def build-dir "./builds")
+                  (def build-dir "./builds/")
                   ; detect the operating system, so it can be used where system specific code is necessary
                   (def OS (let [os-name (str/lower-case (System/getProperty "os.name"))]
                             (cond
@@ -25,17 +24,15 @@
                [babashka.fs :as fs])
 
 
-  clean-fnl   {:doc   "Deletes the Lua files which were generated from Fennel sources."
+  clean-generated   {:doc   "Deletes the generated source files."
                :enter (println (str "Deleting `" generated-src-dir "`"))
                :task  (fs/delete-tree generated-src-dir)}
 
 
-  ; TODO: compile .fnl files, copy everything else to the _generated directory. Then I can remove the additional pdx directory entirely and have just src
   compile-fnl {:doc     "Compiles all Fennel source files using `fennel`"
-               :depends [clean-fnl]
                :enter   (println "Compiling Fennel")
                :task    (do (fs/create-dirs generated-src-dir)
-                            (let [root (fs/real-path (fs/path fennel-src-dir))
+                            (let [root (fs/real-path (fs/path src-dir))
                                   macros-dir (fs/path root fennel-macros-dir)
                                   fennel? (fn [path]
                                             (= "fnl" (fs/extension path)))]
@@ -47,34 +44,39 @@
                                      :continue))
                                  :visit-file
                                  (fn [path attrs]
-                                   (if (not (fennel? path))
-                                     :continue
-                                     (let [rel-path-str (str (fs/relativize root path))
-                                           ; TODO: check on linux if this shell command works fine or needs a specific impl
-                                           compiled-lua (:out (shell
-                                                                {:dir fennel-src-dir :out :string}
-                                                                "fennel" "--compile" rel-path-str))]
-                                       (if-not compiled-lua
-                                         :terminate
-                                         (let [[path-without-extension] (fs/split-ext rel-path-str)
-                                               lua-file (fs/path generated-src-dir (str path-without-extension ".lua"))]
-                                           (fs/create-dirs (fs/parent lua-file))
-                                           (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
-                                           :continue)))))})))}
+                                   (let [rel-path-str (str (fs/relativize root path))]
+                                     (if (fennel? path)
+                                       ; compile fennel file to lua
+                                       ; TODO: check on linux if this shell command works fine or needs a specific impl
+                                       (let [compiled-lua (:out (shell
+                                                                  {:dir src-dir :out :string}
+                                                                  "fennel" "--compile" rel-path-str))]
+                                         (if-not compiled-lua
+                                           :terminate
+                                           (let [[path-without-extension] (fs/split-ext rel-path-str)
+                                                 lua-file (fs/path generated-src-dir (str path-without-extension ".lua"))]
+                                             (fs/create-dirs (fs/parent lua-file))
+                                             (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
+                                             :continue)))
+                                       ; copy any non-fennel files
+                                       (let [target-path (fs/path generated-src-dir rel-path-str)]
+                                         (fs/create-dirs (fs/parent target-path))
+                                         (fs/copy path target-path {:replace-existing true})
+                                         :continue))))})))}
 
 
-  clean       {:doc   "Removes the PDX build output folder"
-               :enter (println (str "Deleting `" build-dir "`"))
-               :task  (fs/delete-tree build-dir)}
+  clean {:doc   "Removes the PDX build output folder"
+         :enter (println (str "Deleting `" build-dir "`"))
+         :task  (fs/delete-tree build-dir)}
 
 
-  build-pdx   {:doc     "Builds all Lua files and assets into a Playdate PDX package."
-               :enter   (println "Building PDX package")
-               :depends [clean]
-               :task    (do (fs/create-dirs build-dir)
-                            (let [pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH")]
-                              ; TODO: Use bundleID from pdxinfo instead of current working directory
-                              (shell (str pd-sdk-path "/bin/pdc") pdx-src-dir (str build-dir "/" (fs/file-name (fs/cwd))))))}
+  build-pdx {:doc     "Builds all Lua files and assets into a Playdate PDX package."
+             :enter   (println "Building PDX package")
+             :depends [clean]
+             :task    (do (fs/create-dirs build-dir)
+                          (let [pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH")]
+                            ; TODO: Use bundleID from pdxinfo instead of current working directory
+                            (shell (str pd-sdk-path "/bin/pdc") generated-src-dir (str build-dir "/" (fs/file-name (fs/cwd))))))}
 
   }}
 

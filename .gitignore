@@ -3,3 +3,4 @@
 /.sentry-native/
 /builds/
 /src/pdx/_generated/
+/generated/
