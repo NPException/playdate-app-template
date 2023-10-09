@@ -14,7 +14,7 @@
                    :compiled-sources "./compiled-src/"
                    ; Lua file that is the program's entry point.
                    ; (note that a "main.fnl" file will be compiled to "main.lua")
-                   :main-file         "main.lua"
+                   :main-file         "dummy/main.lua"
                    ; Directory where the Playdate compiler will output the final PDX app.
                    :build-output      "./builds/"})
 
@@ -76,7 +76,7 @@
                      (fs/copy path target-path {:replace-existing true})
                      :continue))))})))
 
-      ; calls the Playdate compiler to build everything in the `:compiled-sources` folder into a PDX app
+      ; calls the Playdate compiler to build everything in the `:compiled-sources` directory into a PDX app
       (defn invoke-pdc []
         (fs/create-dirs (:build-output config))
         (let [output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name)))] ; pdc needs the absolute path for some reason
@@ -88,7 +88,7 @@
   ;; Available Babashka Tasks
 
   clean-compiled
-  {:doc   "Deletes the folder generated via the `compile` task."
+  {:doc   "Deletes the directory generated via the `compile` task."
    :enter (println (str "Deleting `" (:compiled-sources config) "`"))
    :task  (fs/delete-tree (:compiled-sources config))}
 
@@ -101,20 +101,20 @@
 
 
   clean
-  {:doc   "Removes the PDX build output folder"
+  {:doc   "Removes the PDX build output directory"
    :enter (println (str "Deleting `" (:build-output config) "`"))
    :task  (fs/delete-tree (:build-output config))}
 
 
   create-pdx
-  {:doc     "Builds all files in the `:compiled-sources` folder into a Playdate PDX app."
+  {:doc     "Builds all files in the `:compiled-sources` directory into a Playdate PDX app."
    :enter   (println "Building PDX app")
    :depends [clean]
    :task    (invoke-pdc)}
 
 
   build
-  {:doc "Compiles Fennel and builds everything into a Playdate PDX app."
+  {:doc "Compiles Fennel and builds everything into a Playdate PDX app. (i.e. calls `compile` and `create-pdx`)"
    :depends [compile create-pdx]}
 
 
@@ -129,7 +129,7 @@
 
 
   start-sim
-  {:doc   "Starts the Playdate simulator with the current app in the build output"
+  {:doc   "Starts the Playdate simulator with the PDX app in the build output directory"
    :enter (println "Starting Playdate Simulator")
    :task  (let [pdx-path (str (fs/path (:build-output config) pdx-name))
                 ; TODO: check if this path works the same under Linux
