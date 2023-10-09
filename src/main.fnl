@@ -1,11 +1,11 @@
 ; Example pong game based on https://wiki.fennel-lang.org/pong ported for Playdate
 (import-macros
-  {: GENERATED_HEADER : SPACER
+  {: GENERATED_HEADER
    : const}
   :macros/macros)
 (GENERATED_HEADER)
 
-(import "CoreLibs/graphics")
+(import :CoreLibs/graphics)
 
 (const pd playdate)
 (const gfx pd.graphics)
@@ -31,7 +31,6 @@
       (and (< (- w 20) state.x)
            (< state.right state.y (+ state.right 100)))))
 
-; TODO: change logic to sprites
 
 (fn pd.update []
   ; "calculate" delta time since last frame
