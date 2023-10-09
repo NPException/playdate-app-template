@@ -1,5 +1,5 @@
 @echo OFF
-call bb compile-fnl
+call bb compile
 if NOT %ERRORLEVEL% == 0 exit /b %ERRORLEVEL%
 call bb build-pdx
 if NOT %ERRORLEVEL% == 0 exit /b %ERRORLEVEL%
