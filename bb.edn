@@ -7,8 +7,8 @@
   :init
   (do (def config {:sources          "./src/"
                    ; Directory relative to `:sources` where Fennel macro modules are placed.
-                   ; Fennel files within this directory will not be compiled directly
-                   ; TODO: just ignore .fnl files within this directory, not the entire directory itself
+                   ; Fennel files within this directory will not be compiled directly.
+                   ; (but other file types will still be copied to `:compiled-sources`)
                    :fennel-macros    "macros/"
                    ; Directory where the compiled Lua and other copied files will be put.
                    ; This is then used as the input directory for the Playdate compiler.
@@ -62,27 +62,24 @@
           ; start compile/copy
           (fs/create-dirs (:compiled-sources config))
           (fs/walk-file-tree src-dir
-            {:pre-visit-dir
-             (fn [path attrs]
-               (if (fs/same-file? path macros-dir)
-                 :skip-subtree
-                 :continue))
-             :visit-file
+            {:visit-file
              (fn [path attrs]
                (let [rel-path-str (str (fs/relativize src-dir path))]
                  (if (fennel-file? path)
-                   ; compile fennel file to lua
-                   ; TODO: check on linux if this shell command works fine or needs a specific impl
-                   (let [compiled-lua (:out (shell
-                                              {:dir (:sources config), :out :string}
-                                              "fennel" "--compile" rel-path-str))]
-                     (if-not compiled-lua
-                       :terminate
-                       (let [[path-without-extension] (fs/split-ext rel-path-str)
-                             lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
-                         (fs/create-dirs (fs/parent lua-file))
-                         (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
-                         :continue)))
+                   ; compile fennel file to lua, but ignore macro files
+                   (if (fs/starts-with? path macros-dir)
+                     :continue
+                     ; TODO: check on linux if this shell command works fine or needs a specific impl
+                     (let [compiled-lua (:out (shell
+                                                {:dir (:sources config), :out :string}
+                                                "fennel" "--compile" rel-path-str))]
+                       (if-not compiled-lua
+                         :terminate
+                         (let [[path-without-extension] (fs/split-ext rel-path-str)
+                               lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
+                           (fs/create-dirs (fs/parent lua-file))
+                           (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
+                           :continue))))
                    ; copy any non-fennel files
                    (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
                      (fs/create-dirs (fs/parent target-path))
