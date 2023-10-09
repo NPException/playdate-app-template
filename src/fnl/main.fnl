@@ -2,7 +2,7 @@
 (import-macros
   {: GENERATED_HEADER : SPACER
    : const}
-  :macros)
+  :macros/macros)
 (GENERATED_HEADER)
 
 (import "CoreLibs/graphics")
