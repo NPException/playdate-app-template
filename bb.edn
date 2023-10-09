@@ -11,11 +11,11 @@
                    :fennel-macros     "macros/"
                    ; Directory where the compiled Lua and other copied files will be put.
                    ; This is then used as the input directory for the Playdate compiler.
-                   :generated-sources "./generated/"
+                   :compiled-sources "./compiled-src/"
                    ; Lua file that is the program's entry point.
                    ; (note that a "main.fnl" file will be compiled to "main.lua")
                    :main-file         "main.lua"
-                   ; Directory where the Playdate compiler will output the final PDX bundle.
+                   ; Directory where the Playdate compiler will output the final PDX app.
                    :build-output      "./builds/"})
 
       ; detect the operating system, so it can be used where system specific code is necessary
@@ -41,9 +41,9 @@
       ; TODO: Use bundleID from pdxinfo instead of current working directory
       (def pdx-name (str (fs/file-name (fs/cwd)) ".pdx"))
 
-      ; compiles all .fnl files to lua (except macro modules) and copies other files to the generated sources directory
+      ; compiles all .fnl files to lua (except macro modules) and copies other files to the `:compiled-sources` directory
       (defn compile-and-copy []
-        (fs/create-dirs (:generated-sources config))
+        (fs/create-dirs (:compiled-sources config))
         (let [root (fs/canonicalize (fs/path (:sources config)))
               macros-dir (fs/path root (:fennel-macros config))
               fennel? (fn [path]
@@ -66,22 +66,22 @@
                      (if-not compiled-lua
                        :terminate
                        (let [[path-without-extension] (fs/split-ext rel-path-str)
-                             lua-file (fs/path (:generated-sources config) (str path-without-extension ".lua"))]
+                             lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
                          (fs/create-dirs (fs/parent lua-file))
                          (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
                          :continue)))
                    ; copy any non-fennel files
-                   (let [target-path (fs/path (:generated-sources config) rel-path-str)]
+                   (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
                      (fs/create-dirs (fs/parent target-path))
                      (fs/copy path target-path {:replace-existing true})
                      :continue))))})))
 
-      ; calls the Playdate compiler to build everything in the generated sources folder into a PDX bundle
+      ; calls the Playdate compiler to build everything in the `:compiled-sources` folder into a PDX app
       (defn invoke-pdc []
         (fs/create-dirs (:build-output config))
         (let [output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name)))] ; pdc needs the absolute path for some reason
           (shell
-            {:dir (:generated-sources config)}
+            {:dir (:compiled-sources config)}
             (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) output-path))))
 
 
@@ -89,12 +89,12 @@
 
   clean-compiled
   {:doc   "Deletes the folder generated via the `compile` task."
-   :enter (println (str "Deleting `" (:generated-sources config) "`"))
-   :task  (fs/delete-tree (:generated-sources config))}
+   :enter (println (str "Deleting `" (:compiled-sources config) "`"))
+   :task  (fs/delete-tree (:compiled-sources config))}
 
 
   compile
-  {:doc     "Compiles all Fennel files using `fennel` and copies all other files to the `:generated-sources` directory."
+  {:doc     "Compiles all Fennel files using `fennel` and copies all other files to the `:compiled-sources` directory."
    :enter   (println "Compiling Fennel")
    :depends [clean-compiled]
    :task    (compile-and-copy)}
@@ -107,7 +107,7 @@
 
 
   create-pdx
-  {:doc     "Builds all files in the `:generated-sources` folder into a Playdate PDX app."
+  {:doc     "Builds all files in the `:compiled-sources` folder into a Playdate PDX app."
    :enter   (println "Building PDX app")
    :depends [clean]
    :task    (invoke-pdc)}
