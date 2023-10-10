@@ -1,8 +1,8 @@
 # For details on every possible key in this file see https://sdk.play.date/2.0.3/Inside%20Playdate.html#pdxinfo
 name=PD Fennel Template
-author=NPException
+author=John Doe
 description=Just a minimal dummy game written using the Fennel programming language
-bundleID=de.npexception.pd.fennel-template
+bundleID=com.example.my-game
 version=1.0.0
 # Number of the current build (increment this at least everytime before you deploy your app)
 buildNumber=1

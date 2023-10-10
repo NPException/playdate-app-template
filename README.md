@@ -46,17 +46,18 @@ of the tasks `build` and `start-sim`.
 
 Other available tasks are:
 
-| Task              | Description                                                                                                                                                                 |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `clean-compiled`  | Deletes the directory generated via the `compile` task.                                                                                                                     |
-| `compile`         | Compiles all Fennel files using `fennel` and copies<br/>all other files to the `:compiled-sources` directory.<br/>Does nothing if there are no `.fnl` files in the project. |
-| `clean`           | Removes the PDX build output directory                                                                                                                                      |
-| `create-pdx`      | Builds all files in the `:compiled-sources` directory into a Playdate PDX app.                                                                                              |
-| `build`           | Compiles Fennel (if necessary) and builds everything into a Playdate PDX app.<br/>(i.e. calls `compile` and `create-pdx`)                                                   |
-| `copy-pdx-to-sim` | Copies the PDX app to the Playdate simulator's games directory,<br/>so it can be selected in the simulator's menu.                                                          |
-| `start-sim`       | Starts the Playdate simulator with the PDX app in the build output directory                                                                                                |
-| `build-and-sim`   | Calls the `build` task and then starts the Playdate simulator.                                                                                                              |
-| `build-copy-sim`  | Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator.                                                                                          |
+| Task              | Description                                                                                                                                                                            |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bump-build-nr`   | Increments the `buildNumber` in the pdxinfo file.                                                                                                                                      |
+| `clean-compiled`  | Deletes the directory generated via the `compile` task.                                                                                                                                |
+| `compile`         | Compiles all Fennel files using `fennel` and copies<br/>all other files to the `:compiled-sources` directory.<br/>Does nothing if there are no `.fnl` files in the project.            |
+| `clean`           | Removes the PDX build output directory                                                                                                                                                 |
+| `create-pdx`      | Builds all files in the `:compiled-sources` directory into a Playdate PDX app.                                                                                                         |
+| `build`           | Increments the `buildNumber` in pdxinfo, compiles Fennel (if necessary)<br/>and builds everything into a Playdate PDX app.<br/>(i.e. calls `bump-build-nr` `compile` and `create-pdx`) |
+| `copy-pdx-to-sim` | Copies the PDX app to the Playdate simulator's games directory,<br/>so it can be selected in the simulator's menu.                                                                     |
+| `start-sim`       | Starts the Playdate simulator with the PDX app in the build output directory                                                                                                           |
+| `build-and-sim`   | Calls the `build` task and then starts the Playdate simulator.                                                                                                                         |
+| `build-copy-sim`  | Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator.                                                                                                     |
 
 You can get the list of all available tasks and what they do by running:
 

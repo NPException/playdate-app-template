@@ -75,7 +75,7 @@
               (System/exit 1))
             value))
         ; function to change a value
-        (defn change-pdxinfo [key value]
+        (defn pdxinfo-set [key value]
           (swap! pdxinfo-lines
             (fn [lines]
               (mapv (fn [line]
@@ -84,7 +84,7 @@
                         line))
                 lines))))
         ; function to save changed pdxinfo
-        (defn save-pdxinfo! []
+        (defn pdxinfo-save! []
           (->> (deref pdxinfo-lines)
             (map (fn [line]
                    (if (vector? line)
@@ -135,6 +135,14 @@
 
   ;; Available Babashka Tasks
 
+  bump-build-nr
+  {:doc   "Increments the `buildNumber` in the pdxinfo file."
+   :enter (println "Incrementing `buildNumber`")
+   :task  (let [build-nr (parse-long (pdxinfo "buildNumber"))]
+            (pdxinfo-set "buildNumber" (str (inc build-nr)))
+            (pdxinfo-save!))}
+
+
   clean-compiled
   {:doc   "Deletes the directory generated via the `compile` task."
    :enter (println (str "Deleting `" (:compiled-sources config) "`"))
@@ -163,8 +171,8 @@
 
 
   build
-  {:doc     "Compiles Fennel (if necessary) and builds everything into a Playdate PDX app. (i.e. calls `compile` and `create-pdx`)"
-   :depends [compile create-pdx]}
+  {:doc     "Increments the `buildNumber` in pdxinfo, compiles Fennel (if necessary) and builds everything into a Playdate PDX app. (i.e. calls `bump-build-nr` `compile` and `create-pdx`)"
+   :depends [bump-build-nr compile create-pdx]}
 
 
   copy-pdx-to-sim
@@ -197,7 +205,6 @@
 
   }}
 
-; TODO: - inc-build-number task (then make `build` depend on it)
-;       - build-release task [compile-fnl build], then zip up the pdx folder
+; TODO: - build-release task [compile-fnl build], then zip up the pdx folder
 
 ; TODO (maybe): - add github action to trigger release (for latest tag on main?)
