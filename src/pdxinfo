@@ -3,7 +3,7 @@ name=PD Fennel Template
 author=John Doe
 description=Just a minimal dummy game written using the Fennel programming language
 bundleID=com.example.my-game
-version=1.0.0
+version=0.0.1
 # Number of the current build (increment this at least everytime before you deploy your app)
 buildNumber=1
 # Path to various images and animations related to the game's presentation in the menu.

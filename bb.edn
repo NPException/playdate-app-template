@@ -27,120 +27,61 @@
                   (str/includes? os-name "mac") :mac
                   :else :linux)))
 
-      ; check if the Playdate SDK path is known
-      (def pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH"))
-      (when-not pd-sdk-path
-        (println "`PLAYDATE_SDK_PATH` environment variable is not set.\nIf you don't have the Playdate SDK yet, you can get it at https://play.date/dev/")
-        (System/exit 1))
-
-      (defn fennel-file? [path]
-        (= "fnl" (fs/extension path)))
-
       (def src-dir (fs/canonicalize (fs/path (:sources config))))
-      (def macros-dir (fs/path src-dir (:fennel-macros config)))
-
-      ; walk the directory. when finding a fennel file, check if the `fennel` command exists
-      (def fennel-project? false)
-      (fs/walk-file-tree src-dir
-        {:pre-visit-dir
-         (fn [path attrs]
-           ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
-           (if (fs/same-file? macros-dir path)
-             :skip-subtree
-             :continue))
-         :visit-file
-         (fn [path attrs]
-           (if-not (fennel-file? path)
-             :continue
-             (do (when-not (fs/which "fennel")
-                   (println "`fennel` is not available to this script. Make sure it is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
-                   (System/exit 1))
-                 (def fennel-project? true)                 ; yucky reassignment, but it works nicely
-                 :terminate)))})
-
-      (let [pdxinfo-path (fs/path src-dir "pdxinfo")
-            pdxinfo-lines (atom (->> (fs/read-all-lines pdxinfo-path)
-                                  (mapv (fn [line]
-                                          (if (or (str/blank? line) (str/starts-with? line "#"))
-                                            line
-                                            (str/split line (re-pattern "=") 2))))))]
-        ; function to read a value from the pdxinfo file
-        (defn pdxinfo [key]
-          (let [value (->> (deref pdxinfo-lines)
-                        (filter (fn [[k v]] (= k key)))
-                        first
-                        second)]
-            (when-not value
-              (println (str "Tried to read `" key "` from pdxinfo file, but they key is missing in the file."))
-              (System/exit 1))
-            value))
-        ; function to change a value
-        (defn pdxinfo-set [key value]
-          (swap! pdxinfo-lines
-            (fn [lines]
-              (mapv (fn [line]
-                      (if (= key (first line))
-                        [key value]
-                        line))
-                lines))))
-        ; function to save changed pdxinfo
-        (defn pdxinfo-save! []
-          (->> (deref pdxinfo-lines)
-            (map (fn [line]
-                   (if (vector? line)
-                     (str (first line) "=" (second line))
-                     line)))
-            (fs/write-lines pdxinfo-path))))
-
-      (def pdx-name (str (pdxinfo "bundleID") ".pdx"))
-
-      ; compiles all .fnl files to lua (except macro modules) and copies other files to the `:compiled-sources` directory
-      (defn compile-and-copy []
-        (fs/create-dirs (:compiled-sources config))
-        (fs/walk-file-tree src-dir
-          {:visit-file
-           (fn [path attrs]
-             (let [rel-path-str (str (fs/relativize src-dir path))]
-               (if (fennel-file? path)
-                 ; compile fennel file to lua, but ignore macro files
-                 (if (fs/starts-with? path macros-dir)
-                   :continue
-                   ; TODO: check on linux if this shell command works fine or needs a specific impl
-                   (let [compiled-lua (:out (shell
-                                              {:dir (:sources config), :out :string}
-                                              "fennel" "--compile" rel-path-str))]
-                     (if-not compiled-lua
-                       :terminate
-                       (let [[path-without-extension] (fs/split-ext rel-path-str)
-                             lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
-                         (fs/create-dirs (fs/parent lua-file))
-                         (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
-                         :continue))))
-                 ; copy any non-fennel files
-                 (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
-                   (fs/create-dirs (fs/parent target-path))
-                   (fs/copy path target-path {:replace-existing true})
-                   :continue))))}))
-
-      ; calls the Playdate compiler to build everything in the `:compiled-sources` directory into a PDX app
-      (defn invoke-pdc []
-        (fs/create-dirs (:build-output config))
-        (let [output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name)))] ; pdc needs the absolute path for some reason
-          (shell
-            {:dir (if fennel-project?
-                    (:compiled-sources config)
-                    (:sources config))}
-            (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) output-path))))
+      (def macros-dir (fs/path src-dir (:fennel-macros config))))
 
 
   ;; Available Babashka Tasks
 
+  -pdxinfo
+  {:doc  "Prepares reading from and writing to the pdxinfo file"
+   :task (let [pdxinfo-path (fs/path src-dir "pdxinfo")
+               pdxinfo-lines (atom (->> (fs/read-all-lines pdxinfo-path)
+                                     (mapv (fn [line]
+                                             (if (or (str/blank? line) (str/starts-with? line "#"))
+                                               line
+                                               (str/split line (re-pattern "=") 2))))))]
+
+           ; function to read a value from the pdxinfo file
+           (defn pdxinfo [key]
+             (let [value (->> (deref pdxinfo-lines)
+                           (filter (fn [[k v]] (= k key)))
+                           first
+                           second)]
+               (when-not value
+                 (println (str "Tried to read `" key "` from pdxinfo file, but they key is missing in the file."))
+                 (System/exit 1))
+               value))
+
+           ; function to change a value
+           (defn pdxinfo-set! [key value]
+             (assert (string? value))
+             ; first set the new value in memory
+             (->> (swap! pdxinfo-lines
+                    (fn [lines]
+                      (mapv (fn [[k _ :as line]]
+                              (if (= key k)
+                                [key value]
+                                line))
+                        lines)))
+               ; store the new lines to the file
+               (map (fn [line]
+                      (if (vector? line)
+                        (str (first line) "=" (second line))
+                        line)))
+               (fs/write-lines pdxinfo-path))))}
+
+  -pdx-name
+  {:depends [-pdxinfo]
+   :task    (def pdx-name (str (pdxinfo "bundleID") ".pdx"))}
+
+
   bump-build-nr
-  {:doc   "Increments the `buildNumber` in the pdxinfo file."
-   :enter (println "Incrementing `buildNumber`")
-   :task  (let [build-nr (parse-long (pdxinfo "buildNumber"))]
-            (pdxinfo-set "buildNumber" (str (inc build-nr)))
-            (pdxinfo-save!))}
+  {:doc     "Increments the `buildNumber` in the pdxinfo file."
+   :depends [-pdxinfo]
+   :enter   (println "Incrementing `buildNumber`")
+   :task    (let [build-nr (parse-long (pdxinfo "buildNumber"))]
+              (pdxinfo-set! "buildNumber" (str (inc build-nr))))}
 
 
   clean-compiled
@@ -149,12 +90,59 @@
    :task  (fs/delete-tree (:compiled-sources config))}
 
 
+  -fennel-project?
+  {:doc  "Walk the directory. When finding a fennel file, checks if the `fennel` command exists."
+   :task (do (defn fennel-file? [path]
+               (= "fnl" (fs/extension path)))
+             (def fennel-project? false)
+             (fs/walk-file-tree src-dir
+               {:pre-visit-dir
+                (fn [path attrs]
+                  ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
+                  (if (fs/same-file? macros-dir path)
+                    :skip-subtree
+                    :continue))
+                :visit-file
+                (fn [path attrs]
+                  (if-not (fennel-file? path)
+                    :continue
+                    (do (when-not (fs/which "fennel")
+                          (println "`fennel` is not available to this script. Make sure it is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
+                          (System/exit 1))
+                        (def fennel-project? true)          ; yucky reassignment, but it works nicely
+                        :terminate)))}))}
+
+
   compile
   {:doc     "Compiles all Fennel files using `fennel` and copies all other files to the `:compiled-sources` directory. Does nothing if there are no `.fnl` files in the project."
-   :depends [clean-compiled]
+   :depends [clean-compiled -fennel-project?]
    :task    (when fennel-project?
               (println "Compiling Fennel")
-              (compile-and-copy))}
+              (fs/create-dirs (:compiled-sources config))
+              (fs/walk-file-tree src-dir
+                {:visit-file
+                 (fn [path attrs]
+                   (let [rel-path-str (str (fs/relativize src-dir path))]
+                     (if (fennel-file? path)
+                       ; compile fennel file to lua, but ignore macro files
+                       (if (fs/starts-with? path macros-dir)
+                         :continue
+                         ; TODO: check on linux if this shell command works fine or needs a specific impl
+                         (let [compiled-lua (:out (shell
+                                                    {:dir (:sources config), :out :string}
+                                                    "fennel" "--compile" rel-path-str))]
+                           (if-not compiled-lua
+                             :terminate
+                             (let [[path-without-extension] (fs/split-ext rel-path-str)
+                                   lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
+                               (fs/create-dirs (fs/parent lua-file))
+                               (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
+                               :continue))))
+                       ; copy any non-fennel files
+                       (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
+                         (fs/create-dirs (fs/parent target-path))
+                         (fs/copy path target-path {:replace-existing true})
+                         :continue))))}))}
 
 
   clean
@@ -163,11 +151,25 @@
    :task  (fs/delete-tree (:build-output config))}
 
 
+  -pd-sdk
+  {:doc  "Checks if the Playdate SDK path is known"
+   :task (do (def pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH"))
+             (when-not pd-sdk-path
+               (println "`PLAYDATE_SDK_PATH` environment variable is not set.\nIf you don't have the Playdate SDK yet, you can get it at https://play.date/dev/")
+               (System/exit 1)))}
+
+
   create-pdx
   {:doc     "Builds all files in the `:compiled-sources` directory into a Playdate PDX app."
+   :depends [clean -pdx-name -fennel-project? -pd-sdk]
    :enter   (println "Building PDX app")
-   :depends [clean]
-   :task    (invoke-pdc)}
+   :task    (do (fs/create-dirs (:build-output config))
+                (let [output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name)))] ; pdc needs the absolute path for some reason
+                  (shell
+                    {:dir (if fennel-project?
+                            (:compiled-sources config)
+                            (:sources config))}
+                    (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) output-path)))}
 
 
   build
@@ -176,22 +178,24 @@
 
 
   copy-pdx-to-sim
-  {:doc   "Copies the PDX app to the Playdate simulator's games directory, so it can be selected in the simulator's menu."
-   :enter (println "Copying app to simulator")
-   :task  (let [source-path (fs/path (:build-output config) pdx-name)
-                ; TODO: check if this path works the same under Linux
-                target-path (fs/path pd-sdk-path "Disk/Games/User/" pdx-name)]
-            (fs/delete-tree target-path)
-            (fs/copy-tree source-path target-path))}
+  {:doc     "Copies the PDX app to the Playdate simulator's games directory, so it can be selected in the simulator's menu."
+   :depends [-pdx-name -pd-sdk]
+   :enter   (println "Copying app to simulator")
+   :task    (let [source-path (fs/path (:build-output config) pdx-name)
+                  ; TODO: check if this path works the same under Linux
+                  target-path (fs/path pd-sdk-path "Disk/Games/User/" pdx-name)]
+              (fs/delete-tree target-path)
+              (fs/copy-tree source-path target-path))}
 
 
   start-sim
-  {:doc   "Starts the Playdate simulator with the PDX app in the build output directory"
-   :enter (println "Starting Playdate Simulator")
-   :task  (let [pdx-path (str (fs/path (:build-output config) pdx-name))
-                ; TODO: check if this path works the same under Linux
-                sim-path (str (fs/path pd-sdk-path "bin/PlaydateSimulator"))]
-            (shell sim-path pdx-path))}
+  {:doc     "Starts the Playdate simulator with the PDX app in the build output directory"
+   :depends [-pdx-name -pd-sdk]
+   :enter   (println "Starting Playdate Simulator")
+   :task    (let [pdx-path (str (fs/path (:build-output config) pdx-name))
+                  ; TODO: check if this path works the same under Linux
+                  sim-path (str (fs/path pd-sdk-path "bin/PlaydateSimulator"))]
+              (shell sim-path pdx-path))}
 
 
   build-and-sim
