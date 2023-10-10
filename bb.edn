@@ -37,11 +37,18 @@
         (= "fnl" (fs/extension path)))
 
       (def src-dir (fs/canonicalize (fs/path (:sources config))))
+      (def macros-dir (fs/path src-dir (:fennel-macros config)))
 
       ; walk the directory. when finding a fennel file, check if the `fennel` command exists
       (def fennel-project? false)
       (fs/walk-file-tree src-dir
-        {:visit-file
+        {:pre-visit-dir
+         (fn [path attrs]
+           ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
+           (if (fs/same-file? macros-dir path)
+             :skip-subtree
+             :continue))
+         :visit-file
          (fn [path attrs]
            (if-not (fennel-file? path)
              :continue
@@ -51,40 +58,69 @@
                  (def fennel-project? true)                 ; yucky reassignment, but it works nicely
                  :terminate)))})
 
-      ; TODO: load pdxinfo lines and make values accessible via a function
+      (let [pdxinfo-path (fs/path src-dir "pdxinfo")
+            pdxinfo-lines (atom (->> (fs/read-all-lines pdxinfo-path)
+                                  (mapv (fn [line]
+                                          (if (or (str/blank? line) (str/starts-with? line "#"))
+                                            line
+                                            (str/split line (re-pattern "=") 2))))))]
+        ; function to read a value from the pdxinfo file
+        (defn pdxinfo [key]
+          (let [value (->> (deref pdxinfo-lines)
+                        (filter (fn [[k v]] (= k key)))
+                        first
+                        second)]
+            (when-not value
+              (println (str "Tried to read `" key "` from pdxinfo file, but they key is missing in the file."))
+              (System/exit 1))
+            value))
+        ; function to change a value
+        (defn change-pdxinfo [key value]
+          (swap! pdxinfo-lines
+            (fn [lines]
+              (mapv (fn [line]
+                      (if (= key (first line))
+                        [key value]
+                        line))
+                lines))))
+        ; function to save changed pdxinfo
+        (defn save-pdxinfo! []
+          (->> (deref pdxinfo-lines)
+            (map (fn [line]
+                   (if (vector? line)
+                     (str (first line) "=" (second line))
+                     line)))
+            (fs/write-lines pdxinfo-path))))
 
-      ; TODO: Use bundleID from pdxinfo instead of current working directory
-      (def pdx-name (str (fs/file-name (fs/cwd)) ".pdx"))
+      (def pdx-name (str (pdxinfo "bundleID") ".pdx"))
 
       ; compiles all .fnl files to lua (except macro modules) and copies other files to the `:compiled-sources` directory
       (defn compile-and-copy []
-        (let [macros-dir (fs/path src-dir (:fennel-macros config))]
-          ; start compile/copy
-          (fs/create-dirs (:compiled-sources config))
-          (fs/walk-file-tree src-dir
-            {:visit-file
-             (fn [path attrs]
-               (let [rel-path-str (str (fs/relativize src-dir path))]
-                 (if (fennel-file? path)
-                   ; compile fennel file to lua, but ignore macro files
-                   (if (fs/starts-with? path macros-dir)
-                     :continue
-                     ; TODO: check on linux if this shell command works fine or needs a specific impl
-                     (let [compiled-lua (:out (shell
-                                                {:dir (:sources config), :out :string}
-                                                "fennel" "--compile" rel-path-str))]
-                       (if-not compiled-lua
-                         :terminate
-                         (let [[path-without-extension] (fs/split-ext rel-path-str)
-                               lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
-                           (fs/create-dirs (fs/parent lua-file))
-                           (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
-                           :continue))))
-                   ; copy any non-fennel files
-                   (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
-                     (fs/create-dirs (fs/parent target-path))
-                     (fs/copy path target-path {:replace-existing true})
-                     :continue))))})))
+        (fs/create-dirs (:compiled-sources config))
+        (fs/walk-file-tree src-dir
+          {:visit-file
+           (fn [path attrs]
+             (let [rel-path-str (str (fs/relativize src-dir path))]
+               (if (fennel-file? path)
+                 ; compile fennel file to lua, but ignore macro files
+                 (if (fs/starts-with? path macros-dir)
+                   :continue
+                   ; TODO: check on linux if this shell command works fine or needs a specific impl
+                   (let [compiled-lua (:out (shell
+                                              {:dir (:sources config), :out :string}
+                                              "fennel" "--compile" rel-path-str))]
+                     (if-not compiled-lua
+                       :terminate
+                       (let [[path-without-extension] (fs/split-ext rel-path-str)
+                             lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
+                         (fs/create-dirs (fs/parent lua-file))
+                         (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
+                         :continue))))
+                 ; copy any non-fennel files
+                 (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
+                   (fs/create-dirs (fs/parent target-path))
+                   (fs/copy path target-path {:replace-existing true})
+                   :continue))))}))
 
       ; calls the Playdate compiler to build everything in the `:compiled-sources` directory into a PDX app
       (defn invoke-pdc []
@@ -161,7 +197,7 @@
 
   }}
 
-; TODO: - inc-build-number task
-;       - build-release task [compile-fnl bump-build build-pdx], then zip up the folder
+; TODO: - inc-build-number task (then make `build` depend on it)
+;       - build-release task [compile-fnl build], then zip up the pdx folder
 
 ; TODO (maybe): - add github action to trigger release (for latest tag on main?)

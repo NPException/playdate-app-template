@@ -4,7 +4,8 @@ author=NPException
 description=Just a minimal dummy game written using the Fennel programming language
 bundleID=de.npexception.pd.fennel-template
 version=1.0.0
-buildNumber=123
+# Number of the current build (increment this at least everytime before you deploy your app)
+buildNumber=1
 # Path to various images and animations related to the game's presentation in the menu.
 # (at minimum, all games should include card.png, icon.png and a launchImage.png which will be displayed as the system loads the game)
 imagePath=system_assets
