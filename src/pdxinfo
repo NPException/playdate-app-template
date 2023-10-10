@@ -1,5 +1,5 @@
 # For details on every possible key in this file see https://sdk.play.date/2.0.3/Inside%20Playdate.html#pdxinfo
-name=PD Fennel Template
+name=Example Fennel Game
 author=John Doe
 description=Just a minimal dummy game written using the Fennel programming language
 bundleID=com.example.my-game

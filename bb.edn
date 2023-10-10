@@ -5,7 +5,12 @@
 
   ;; Script Initialization
   :init
-  (do (def config {:sources          "./src/"
+  (do (def config {
+                   ; Name of the zip file when the `build-release` task is called.
+                   ; Any key from the pdxinfo file can be used as placeholder.
+                   :release-name     "${name} v${version}_b${buildNumber}"
+                   ; Directory where all code and assets are located
+                   :sources          "./src/"
                    ; Directory relative to `:sources` where Fennel macro modules are placed.
                    ; Fennel files within this directory will not be compiled directly.
                    ; (but other file types will still be copied to `:compiled-sources`)
@@ -145,10 +150,16 @@
                          :continue))))}))}
 
 
+  -pdx-output-path
+  {:depends [-pdx-name]
+   :task    (def pdx-output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name))))}
+
+
   clean
-  {:doc   "Removes the PDX build output directory"
-   :enter (println (str "Deleting `" (:build-output config) "`"))
-   :task  (fs/delete-tree (:build-output config))}
+  {:doc     "Removes the PDX build output directory"
+   :depends [-pdx-output-path]
+   :enter   (println (str "Deleting `" (str (fs/relativize (fs/cwd) pdx-output-path)) "`"))
+   :task    (fs/delete-tree pdx-output-path)}
 
 
   -pd-sdk
@@ -161,15 +172,14 @@
 
   create-pdx
   {:doc     "Builds all files in the `:compiled-sources` directory into a Playdate PDX app."
-   :depends [clean -pdx-name -fennel-project? -pd-sdk]
+   :depends [clean -fennel-project? -pd-sdk]
    :enter   (println "Building PDX app")
    :task    (do (fs/create-dirs (:build-output config))
-                (let [output-path (str (fs/canonicalize (fs/path (:build-output config) pdx-name)))] ; pdc needs the absolute path for some reason
-                  (shell
-                    {:dir (if fennel-project?
-                            (:compiled-sources config)
-                            (:sources config))}
-                    (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) output-path)))}
+                (shell
+                  {:dir (if fennel-project?
+                          (:compiled-sources config)
+                          (:sources config))}
+                  (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) pdx-output-path))}
 
 
   build
@@ -179,23 +189,19 @@
 
   copy-pdx-to-sim
   {:doc     "Copies the PDX app to the Playdate simulator's games directory, so it can be selected in the simulator's menu."
-   :depends [-pdx-name -pd-sdk]
+   :depends [-pdx-output-path -pd-sdk]
    :enter   (println "Copying app to simulator")
-   :task    (let [source-path (fs/path (:build-output config) pdx-name)
-                  ; TODO: check if this path works the same under Linux
-                  target-path (fs/path pd-sdk-path "Disk/Games/User/" pdx-name)]
+   :task    (let [target-path (fs/path pd-sdk-path "Disk/Games/User/" pdx-name)] ; TODO: check if this path works the same under Linux
               (fs/delete-tree target-path)
-              (fs/copy-tree source-path target-path))}
+              (fs/copy-tree pdx-output-path target-path))}
 
 
   start-sim
   {:doc     "Starts the Playdate simulator with the PDX app in the build output directory"
-   :depends [-pdx-name -pd-sdk]
+   :depends [-pdx-output-path -pd-sdk]
    :enter   (println "Starting Playdate Simulator")
-   :task    (let [pdx-path (str (fs/path (:build-output config) pdx-name))
-                  ; TODO: check if this path works the same under Linux
-                  sim-path (str (fs/path pd-sdk-path "bin/PlaydateSimulator"))]
-              (shell sim-path pdx-path))}
+   :task    (let [sim-path (str (fs/path pd-sdk-path "bin/PlaydateSimulator"))] ; TODO: check if this path works the same under Linux
+              (shell sim-path pdx-output-path))}
 
 
   build-and-sim
@@ -207,8 +213,35 @@
   {:doc     "Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator."
    :depends [build copy-pdx-to-sim start-sim]}
 
+
+  build-release
+  {:doc     "Calls `build` and puts the resulting PDX app in a zip."
+   :depends [build]
+   :task    (let [build-path (fs/path (:build-output config))
+                  pdx-path (fs/path build-path pdx-name)
+                  dirs (loop [processed []
+                              unprocessed [pdx-path]]
+                         (if (empty? unprocessed)
+                           processed
+                           (recur
+                             (concat processed unprocessed)
+                             (fs/list-dirs unprocessed fs/directory?))))
+                  entries (fs/list-dirs dirs (complement fs/directory?))
+                  name-replacer (fn [[full-match key]]
+                                  (pdxinfo key))
+                  zip-name (str/replace (:release-name config) (re-pattern "\\$\\{([^\\}]+)\\}") name-replacer)
+                  zip-path (fs/path build-path (str zip-name ".pdx.zip"))]
+              ; NOTE: For some reason babashka will create an empty file in the zip alongside each folder if I just pass in the root folder I want to zip up
+              (fs/zip zip-path entries
+                ; store paths relative to builds folder
+                {:path-fn (fn [path]
+                            (str (fs/relativize build-path path)))}))}
+
   }}
 
-; TODO: - build-release task [compile-fnl build], then zip up the pdx folder
-
-; TODO (maybe): - add github action to trigger release (for latest tag on main?)
+; TODO: - Only bump build number when files have changed. (maybe possible to check via `fs/modified-since`)
+;           When creating pdx app, write the current timestamp to a file "lastbuild" in "./builds" .
+;           On `bump-build-nr`, use the "lastbuild" file as anchor parameter for `fs/modified-since`,
+;           then use the ./src directory as the file-set parameter. If any are returned,
+;           something has changed in the sources since the last build.
+;       - add github action to trigger release (for latest tag on main?)

@@ -25,6 +25,17 @@ sideloading on a real Playdate device.)
 If there are no `.fnl` files to compile, the copy step is skipped, and the Playdate compiler
 will be called with the `src` directory as its input.
 
+### Release
+
+To create a `.pdx.zip` file of your game which you can distribute online (for example on [itch.io](https://itch.io)),
+you execute the following:
+
+```bash
+bb build-release
+```
+
+This will build the project and pack everything up into a zip file in a `builds` subdirectory.
+
 ### Build config
 
 Near the top of the `bb.edn` file is a config map, that is used to determine where the different
@@ -33,6 +44,7 @@ of each config key:
 
 | Key                 | Description                                                                                                                                                                                                                                                                                                        |
 |---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `:release-name`     | The name that the zip file will get which is created by the `build-release` task.<br/>Can take placeholders for values from the pdxinfo file.                                                                                                                                                                      |
 | `:sources`          | The directory where all your code and asset files are expected to be.                                                                                                                                                                                                                                              |
 | `:fennel-macros`    | A path relative to the `:sources` directory where Fennel macro modules are kept.<br/>These are only used by Fennel during compilation, and will not be compiled themselves.<br/>Non-`.fnl` files will still be picked up by the Playdate compiler if present.                                                      |
 | `:compiled-sources` | The directory where the combination of compiled `.fnl` files and copies of<br/>all other files in the `:sources` directory will be put by the `compile` task.<br/>It is also the directory that is used as input for the Playdate compiler.<br/>If there are no `.fnl` files to compile, this directory is unused. |
@@ -58,6 +70,7 @@ Other available tasks are:
 | `start-sim`       | Starts the Playdate simulator with the PDX app in the build output directory                                                                                                           |
 | `build-and-sim`   | Calls the `build` task and then starts the Playdate simulator.                                                                                                                         |
 | `build-copy-sim`  | Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator.                                                                                                     |
+| `build-release`   | Calls `build` and puts the resulting PDX app in a zip.<br/>The name of the zip is determined by the `:release-name` config key.                                                        |
 
 You can get the list of all available tasks and what they do by running:
 
