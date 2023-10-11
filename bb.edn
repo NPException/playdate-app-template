@@ -81,14 +81,6 @@
    :task    (def pdx-name (str (pdxinfo "bundleID") ".pdx"))}
 
 
-  bump-build-nr
-  {:doc     "Increments the `buildNumber` in the pdxinfo file."
-   :depends [-pdxinfo]
-   :enter   (println "Incrementing `buildNumber`")
-   :task    (let [build-nr (parse-long (pdxinfo "buildNumber"))]
-              (pdxinfo-set! "buildNumber" (str (inc build-nr))))}
-
-
   clean-compiled
   {:doc   "Deletes the directory generated via the `compile` task."
    :enter (println (str "Deleting `" (:compiled-sources config) "`"))
@@ -182,9 +174,23 @@
                   (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) pdx-output-path))}
 
 
+  -last-build-file
+  {:task (def last-build-file (fs/path (:build-output config) "last-build"))}
+
+
+  -bump-build-nr
+  {:doc     "Increments the `buildNumber` in the pdxinfo file if files in `:sources` have changed since the last `build`."
+   :depends [-pdxinfo -last-build-file]
+   :enter   (println "Incrementing `buildNumber`")
+   :task    (when (seq (fs/modified-since last-build-file src-dir))
+              (let [build-nr (parse-long (pdxinfo "buildNumber"))]
+                (pdxinfo-set! "buildNumber" (str (inc build-nr)))))}
+
+
   build
-  {:doc     "Increments the `buildNumber` in pdxinfo, compiles Fennel (if necessary) and builds everything into a Playdate PDX app. (i.e. calls `bump-build-nr` `compile` and `create-pdx`)"
-   :depends [bump-build-nr compile create-pdx]}
+  {:doc     "Increments the `buildNumber` in pdxinfo (if sources changes since last build), compiles Fennel (if necessary) and builds everything into a Playdate PDX app."
+   :depends [-last-build-file -bump-build-nr compile create-pdx]
+   :task    (fs/write-lines last-build-file [(str (System/currentTimeMillis))])}
 
 
   copy-pdx-to-sim
@@ -239,9 +245,4 @@
 
   }}
 
-; TODO: - Only bump build number when files have changed. (maybe possible to check via `fs/modified-since`)
-;           When creating pdx app, write the current timestamp to a file "lastbuild" in "./builds" .
-;           On `bump-build-nr`, use the "lastbuild" file as anchor parameter for `fs/modified-since`,
-;           then use the ./src directory as the file-set parameter. If any are returned,
-;           something has changed in the sources since the last build.
-;       - add github action to trigger release (for latest tag on main?)
+; TODO: - add github action to trigger release (for latest tag on main?)
