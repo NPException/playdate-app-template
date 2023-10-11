@@ -189,7 +189,7 @@
                  (fs/list-dirs dirs fs/regular-file?)))
 
              (defn md5-dir
-               "Creates an md5 hash for all files in a folder"
+               "Creates an md5 hash for an entire folder structure"
                [path]
                (let [files (sort (all-files path))
                      ;; this part is to catch file names and directory structure in the hash
@@ -274,6 +274,7 @@
                                   (pdxinfo key))
                   zip-name (str/replace (:release-name config) (re-pattern "\\$\\{([^\\}]+)\\}") name-replacer)
                   zip-path (fs/path build-path (str zip-name ".pdx.zip"))]
+              (println "Creating game release:" (str zip-path))
               ; NOTE: For some reason babashka will create an empty file in the zip alongside each folder if I just pass in the root folder I want to zip up
               (fs/zip zip-path entries
                 ; store paths relative to builds folder
@@ -282,4 +283,6 @@
 
   }}
 
-; TODO: - add github action to trigger release (for latest tag on main?)
+; TODO: - add github action to trigger release (for every push and PR-merge to main)
+;       - separate example game(s) from project template (either as separate branches or in sub directory)
+
