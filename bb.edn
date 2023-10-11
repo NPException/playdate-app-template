@@ -1,6 +1,7 @@
 {:min-bb-version "1.3.185"
  :tasks
  {:requires ([clojure.string :as str]
+             [clojure.java.io :as io]
              [babashka.fs :as fs])
 
   ;; Script Initialization
@@ -174,23 +175,66 @@
                   (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) pdx-output-path))}
 
 
+  -file-utils
+  {:task (do (defn all-files
+               "Function to return a sequence of all files in a directory tree"
+               [directory-path]
+               (let [dirs (loop [processed []
+                                 unprocessed [directory-path]]
+                            (if (empty? unprocessed)
+                              processed
+                              (recur
+                                (concat processed unprocessed)
+                                (fs/list-dirs unprocessed fs/directory?))))]
+                 (fs/list-dirs dirs fs/regular-file?)))
+
+             (defn md5-dir
+               "Creates an md5 hash for all files in a folder"
+               [path]
+               (let [files (sort (all-files path))
+                     ;; this part is to catch file names and directory structure in the hash
+                     structure-stream (->> files
+                                        (map (partial fs/relativize path))
+                                        (mapv str)
+                                        (pr-str)
+                                        (.getBytes)
+                                        (java.io.ByteArrayInputStream.))
+                     files-input-streams (->> files
+                                           (map fs/file)
+                                           (map io/input-stream)
+                                           (into [structure-stream]))
+                     digest (java.security.MessageDigest/getInstance "MD5")]
+                 (with-open [input-stream (java.io.SequenceInputStream. (java.util.Collections/enumeration files-input-streams))
+                             digest-stream (java.security.DigestInputStream. input-stream digest)
+                             output-stream (java.io.OutputStream/nullOutputStream)]
+                   (io/copy digest-stream output-stream))
+                 (format "%032x" (BigInteger. 1 (.digest digest))))))}
+
+
   -last-build-file
-  {:task (def last-build-file (fs/path (:build-output config) "last-build"))}
+  {:task (def last-build-file (fs/path (:build-output config) "last-build-hash"))}
 
 
   -bump-build-nr
-  {:doc     "Increments the `buildNumber` in the pdxinfo file if files in `:sources` have changed since the last `build`."
-   :depends [-pdxinfo -last-build-file]
-   :enter   (println "Incrementing `buildNumber`")
-   :task    (when (seq (fs/modified-since last-build-file src-dir))
-              (let [build-nr (parse-long (pdxinfo "buildNumber"))]
-                (pdxinfo-set! "buildNumber" (str (inc build-nr)))))}
+  {:doc     "Increments the `buildNumber` in the pdxinfo file if files in `:sources` have changed."
+   :depends [-pdxinfo -last-build-file -file-utils]
+   :enter   (println "Checking if files changed")
+   :task    (let [last-hash (when (fs/exists? (fs/file last-build-file))
+                              (str/trim (slurp (fs/file last-build-file))))
+                  current-hash (md5-dir src-dir)]
+              (println "  previous build hash:" last-hash)
+              (println "  current source hash:" current-hash)
+              (when-not (= last-hash current-hash)
+                (println "Incrementing `buildNumber` in pdxinfo")
+                (let [build-nr (parse-long (pdxinfo "buildNumber"))]
+                  (pdxinfo-set! "buildNumber" (str (inc build-nr))))
+                ; hash again (since pdxinfo changed) and store hash to disk
+                (fs/write-lines last-build-file [(md5-dir src-dir)])))}
 
 
   build
   {:doc     "Increments the `buildNumber` in pdxinfo (if sources changes since last build), compiles Fennel (if necessary) and builds everything into a Playdate PDX app."
-   :depends [-last-build-file -bump-build-nr compile create-pdx]
-   :task    (fs/write-lines last-build-file [(str (System/currentTimeMillis))])}
+   :depends [-bump-build-nr compile create-pdx]}
 
 
   copy-pdx-to-sim
@@ -222,17 +266,10 @@
 
   build-release
   {:doc     "Calls `build` and puts the resulting PDX app in a zip."
-   :depends [build]
+   :depends [-file-utils build]
    :task    (let [build-path (fs/path (:build-output config))
                   pdx-path (fs/path build-path pdx-name)
-                  dirs (loop [processed []
-                              unprocessed [pdx-path]]
-                         (if (empty? unprocessed)
-                           processed
-                           (recur
-                             (concat processed unprocessed)
-                             (fs/list-dirs unprocessed fs/directory?))))
-                  entries (fs/list-dirs dirs (complement fs/directory?))
+                  entries (all-files pdx-path)
                   name-replacer (fn [[full-match key]]
                                   (pdxinfo key))
                   zip-name (str/replace (:release-name config) (re-pattern "\\$\\{([^\\}]+)\\}") name-replacer)
