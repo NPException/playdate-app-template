@@ -4,12 +4,15 @@ author=John Doe
 description=Just a minimal dummy game written using the Fennel programming language
 bundleID=com.example.my-game
 version=0.0.1
-# Number of the current build (increment this at least everytime before you deploy your app)
-buildNumber=1
+# Number of the current build. The sideloading mechanism via the Playdate website uses this to
+# know if the version of the app you uploaded there is newer than the one installed on the device.
+# So you should increment this at least everytime before you release a new build of your app.
+buildNumber=0
 # Path to various images and animations related to the game's presentation in the menu.
 # (at minimum, all games should include card.png, icon.png and a launchImage.png which will be displayed as the system loads the game)
 imagePath=system_assets
-# Note that the sound will only be playing for as long as the /launchImages animation runs (@20fps)
+# Sound that should be playing a launch animation from the `[imagePath]/launchImages` runs.
+# Note that the sound will only be playing for as long as the animation runs (@20fps).
 launchSoundPath=system_assets/intro
 # Content warnings will be displayed before launching the game the first time
 contentWarning=This game contains mild realistic violence and bloodshed.
