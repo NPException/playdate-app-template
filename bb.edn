@@ -9,22 +9,25 @@
   (do (def config {
                    ; Name of the zip file when the `build-release` task is called.
                    ; Any key from the pdxinfo file can be used as placeholder.
-                   :release-name     "${name} v${version}_b${buildNumber}"
+                   :release-name       "${name} v${version}_b${buildNumber}"
+                   ; When a release is created via the included GitHub action, this string
+                   ; will be prefixed before the version like so: {release-tag-prefix}v{version}
+                   :release-tag-prefix ""
                    ; Directory where all code and assets are located
-                   :sources          "./src/"
+                   :sources            "./src/"
                    ; Directory relative to `:sources` where Fennel macro modules are placed.
                    ; Fennel files within this directory will not be compiled directly.
                    ; (but other file types will still be copied to `:compiled-sources`)
-                   :fennel-macros    "macros/"
+                   :fennel-macros      "macros/"
                    ; Directory where the compiled Lua and other copied files will be put.
                    ; This is then used as the input directory for the Playdate compiler.
                    ; If there are no `.fnl` files this is unused and `pdc` uses `:sources` directly.
-                   :compiled-sources "./compiled-src/"
+                   :compiled-sources   "./compiled-src/"
                    ; Lua file that is the program's entry point.
                    ; (note that a "main.fnl" file will be compiled to "main.lua")
-                   :main-file        "main.lua"
+                   :main-file          "main.lua"
                    ; Directory where the Playdate compiler will output the final PDX app.
-                   :build-output     "./builds/"})
+                   :build-output       "./builds/"})
 
       ; detect the operating system, so it can be used where system specific code is necessary
       (def OS (let [os-name (str/lower-case (System/getProperty "os.name"))]
@@ -85,7 +88,7 @@
 
 
   pdxinfo
-  {:doc "Takes one argument. Prints out the value of the pdxinfo file for the given key."
+  {:doc     "Takes one argument. Prints out the value of the pdxinfo file for the given key."
    :depends [-pdxinfo]
    :task    (print (pdxinfo (first *command-line-args*)))}
 
@@ -96,10 +99,10 @@
 
 
   clean-compiled
-  {:doc   "Deletes the directory generated via the `compile` task."
-   :task  (when (fs/exists? (:compiled-sources config))
-            (println (str "Deleting `" (:compiled-sources config) "`"))
-            (fs/delete-tree (:compiled-sources config)))}
+  {:doc  "Deletes the directory generated via the `compile` task."
+   :task (when (fs/exists? (:compiled-sources config))
+           (println (str "Deleting `" (:compiled-sources config) "`"))
+           (fs/delete-tree (:compiled-sources config)))}
 
 
   -fennel-project?
@@ -298,6 +301,11 @@
   {:doc     "Prints the name the release would have with the current pdxinfo data."
    :depends [-current-release-name]
    :task    (print (current-release-name))}
+
+
+  release-tag-prefix
+  {:doc  "Prints the config value for :release-tag-prefix"
+   :task (print (:release-tag-prefix config))}
 
 
   -current-release-path
