@@ -97,8 +97,9 @@
 
   clean-compiled
   {:doc   "Deletes the directory generated via the `compile` task."
-   :enter (println (str "Deleting `" (:compiled-sources config) "`"))
-   :task  (fs/delete-tree (:compiled-sources config))}
+   :task  (when (fs/exists? (:compiled-sources config))
+            (println (str "Deleting `" (:compiled-sources config) "`"))
+            (fs/delete-tree (:compiled-sources config)))}
 
 
   -fennel-project?
@@ -139,7 +140,6 @@
                        ; compile fennel file to lua, but ignore macro files
                        (if (fs/starts-with? path macros-dir)
                          :continue
-                         ; TODO: check on linux if this shell command works fine or needs a specific impl
                          (let [compiled-lua (:out (shell
                                                     {:dir (:sources config), :out :string}
                                                     "fennel" "--compile" rel-path-str))]
@@ -171,8 +171,9 @@
   clean
   {:doc     "Removes the PDX build output directory"
    :depends [-pdx-output-path]
-   :enter   (println (str "Deleting `" (str (fs/relativize (fs/cwd) pdx-output-path)) "`"))
-   :task    (fs/delete-tree pdx-output-path)}
+   :task    (when (fs/exists? pdx-output-path)
+              (println (str "Deleting `" (str (fs/relativize (fs/cwd) pdx-output-path)) "`"))
+              (fs/delete-tree pdx-output-path))}
 
 
   -pd-sdk
