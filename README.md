@@ -19,6 +19,8 @@ bb build-copy-sim
 
 This will compile all Fennel `.fnl` files (if any) in the `src` directory to Lua,
 and copy the compiled Lua files as well as any other files in the `src` directory into a `compiled-src` directory.
+_(Note to caution: Any `.lua` file that has the same name as a `.fnl` file
+  in the same directory will overwrite its compiled file!)_  
 Then the Playdate compiler `pdc` will be called with the compiled sources as its input, and creates the PDX app.
 
 (If there are no `.fnl` files to compile, the `compiled-src` directory won't be used,

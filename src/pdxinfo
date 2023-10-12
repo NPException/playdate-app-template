@@ -1,12 +1,17 @@
 # For details on every possible key in this file see https://sdk.play.date/2.0.3/Inside%20Playdate.html#pdxinfo
-name=Example Fennel Game
-author=John Doe
-description=Just a minimal dummy game written using the Fennel programming language
+name=My Game
+author=Game Developer
+description=A small Playdate game which doesn't have any code yet.
+# A unique identifier for your game. Try to use reverse domain notation here.
+# If you don't own a domain you could use as a prefix,
+# one idea is to use your GitHub username like so: io.github.your-username.my-game
 bundleID=com.example.my-game
+# The current version of your game. It is common to use the semantic version format here,
+# but it can just be anything. You could set your version to "Poopy Panda" if you're fancy.
 version=0.0.1
 # Number of the current build. The sideloading mechanism via the Playdate website uses this to
-# know if the version of the app you uploaded there is newer than the one installed on the device.
-# So you should increment this at least everytime before you release a new build of your app.
+# know if this build of your app is newer than any previously uploaded builds. This is what
+# allows the Playdate to download updates without having to uninstall and reinstall the game.
 buildNumber=0
 # Path to various images and animations related to the game's presentation in the menu.
 # (at minimum, all games should include card.png, icon.png and a launchImage.png which will be displayed as the system loads the game)
