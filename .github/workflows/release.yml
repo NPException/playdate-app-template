@@ -94,13 +94,14 @@ jobs:
           echo "pdxinfo-path=$(bb pdxinfo-path)" >> $GITHUB_OUTPUT
           echo "name=$(bb release-name)" >> $GITHUB_OUTPUT
           echo "path=$(bb release-path)" >> $GITHUB_OUTPUT
-          echo "version=$(bb release-version)" >> $GITHUB_OUTPUT
+          echo "version=$(bb pdxinfo version)" >> $GITHUB_OUTPUT
+          echo "build-nr=$(bb pdxinfo buildNumber)" >> $GITHUB_OUTPUT
 
       - name: Commit pxdinfo changes
         if: success()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: update `pdxinfo`
+          commit_message: prepare release `v${{steps.build-release.outputs.version}} b${{steps.build-release.outputs.build-nr}}`
           file_pattern: ${{ steps.build-release.outputs.pdxinfo-path }}
 
       - name: Locate latest commit

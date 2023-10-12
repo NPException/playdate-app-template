@@ -298,12 +298,6 @@
    :task    (print (current-release-name))}
 
 
-  release-version
-  {:doc     "Prints the version the release would have with the current pdxinfo data."
-   :depends [-pdxinfo]
-   :task    (print (pdxinfo "version"))}
-
-
   -current-release-path
   {:depends [-build-path -current-release-name]
    :task    (defn current-release-path []
