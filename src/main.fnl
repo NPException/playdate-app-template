@@ -10,7 +10,7 @@
 (const pd playdate)
 (const gfx pd.graphics)
 
-(pd.display.setRefreshRate 50
+(pd.display.setRefreshRate 50)
 
 (local (w h) (pd.display.getSize))
 (local (speed ball-speed) (values 10 (/ w 4)))

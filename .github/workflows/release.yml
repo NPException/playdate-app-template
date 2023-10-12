@@ -1,24 +1,50 @@
+# This GitHub action will create/update a draft release for the current version
+# specified in the `pdxinfo` file whenever changes in a source sub-folder.
+# (I've tried to cover common source folder names in the `paths` sections below)
+#
+# The action will attempt to do the following:
+# - checkout the branch for which the release should be built
+# - setup Babashka, Fennel, and the Playdate SDK
+# - run the `bb build-release` task
+#     - increments the `buildNumber` in the pdxinfo file
+#     - compile Fennel code (if any)
+#     - call the Playdate compiler to build the project into an PDX app folder
+#     - zip it into a `.pdx.zip` file with the `:release-name` specified in `bb.edn`
+# - commit the updated pdxinfo file
+# - create/update a draft GitHub Release for the version specified in pdxinfo,
+#   and attach the created file to it
+#
+# If the `bb build-release` part fails, the remaining steps will not be executed.
+
 name: Create Release
 
 # Controls when the workflow will run
 on:
   # this means it can be triggered manually
   workflow_dispatch:
-  # trigger on pushes to main
+  # trigger on pushes
   push:
     branches:
-      - 'main'
-      #- 'releases/**' # use this instead of 'main' to only trigger when a release branch is pushed
-    # only when something in the src folder changed
+      - 'main' # use this if you want to trigger whenever main is pushed
+      #- 'releases/**' # use this to only trigger when a release branch is pushed
+    # only when something in a source folder changed
     paths:
       - 'src/**'
+      - 'source/**'
+      - 'sources/**'
+      - 'Source/**'
+      - 'Sources/**'
   # trigger on PRs to main
   pull_request:
     branches:
       - 'main'
-    # only when something in the src folder changed
+    # only when something in a source folder changed
     paths:
       - 'src/**'
+      - 'source/**'
+      - 'sources/**'
+      - 'Source/**'
+      - 'Sources/**'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
