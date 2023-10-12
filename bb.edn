@@ -106,22 +106,23 @@
    :task (do (defn fennel-file? [path]
                (= "fnl" (fs/extension path)))
              (def fennel-project? false)
-             (fs/walk-file-tree src-dir
-               {:pre-visit-dir
-                (fn [path attrs]
-                  ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
-                  (if (fs/same-file? macros-dir path)
-                    :skip-subtree
-                    :continue))
-                :visit-file
-                (fn [path attrs]
-                  (if-not (fennel-file? path)
-                    :continue
-                    (do (when-not (fs/which "fennel")
-                          (println "`fennel` is not available to this script. Make sure it is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
-                          (System/exit 1))
-                        (def fennel-project? true)          ; yucky reassignment, but it works nicely
-                        :terminate)))}))}
+             (let [has-macros-dir? (fs/directory? macros-dir)]
+               (fs/walk-file-tree src-dir
+                 {:pre-visit-dir
+                  (fn [path attrs]
+                    ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
+                    (if (and has-macros-dir? (fs/same-file? macros-dir path))
+                      :skip-subtree
+                      :continue))
+                  :visit-file
+                  (fn [path attrs]
+                    (if-not (fennel-file? path)
+                      :continue
+                      (do (when-not (fs/which "fennel")
+                            (println "`fennel` is not available to this script. Make sure it is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
+                            (System/exit 1))
+                          (def fennel-project? true)        ; yucky reassignment, but it works nicely
+                          :terminate)))})))}
 
 
   compile
