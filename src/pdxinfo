@@ -7,7 +7,7 @@ version=0.0.1
 # Number of the current build. The sideloading mechanism via the Playdate website uses this to
 # know if the version of the app you uploaded there is newer than the one installed on the device.
 # So you should increment this at least everytime before you release a new build of your app.
-buildNumber=0
+buildNumber=-1
 # Path to various images and animations related to the game's presentation in the menu.
 # (at minimum, all games should include card.png, icon.png and a launchImage.png which will be displayed as the system loads the game)
 imagePath=system_assets
