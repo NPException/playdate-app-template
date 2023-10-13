@@ -19,9 +19,9 @@ It allows you to program your Playdate app in [Lua](https://www.lua.org/),
   by a `fennel` executable on your `PATH` environment variable, or by explicitly adding a path for
   the binary to the config section of `bb.edn` under `:fennel-binary-path`.
 
-Really all the heavy lifting is done by [babashka](https://babashka.org/). Technically all you
-need to use this build process for your own projects is to copy the [bb.edn file](bb.edn) into
-your own project, and adjust the values in its `config` section according to your needs.
+All the heavy lifting is done by [babashka](https://babashka.org/). If you want to adapt this build process for
+your existing projects, all you need to do is to copy the [bb.edn file](bb.edn) into
+your project and adjust the values in the `bb.edn`'s `config` section according to your needs.
 
 ## Getting started with [Lua](https://www.lua.org/)
 
