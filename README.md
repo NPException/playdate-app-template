@@ -9,7 +9,8 @@ It allows you to program your Playdate app in [Lua](https://www.lua.org/),
   Alternatively just chuck the executable in your project directory and add it to the `.gitignore`.)_
 * The [PlaydateSDK](https://play.date/dev/) must be available to the build process either via the `PLAYDATE_SDK_PATH` environment variable,
   or by explicitly adding its directory path to the config section of `bb.edn` under `:playdate-sdk-path`.
-* _(Only when using Fennel)_ The Fennel binary must be available to the build process either
+* **[only when using Fennel]**  
+  The Fennel binary must be available to the build process either
   by a `fennel` executable on your `PATH` environment variable, or by explicitly adding a path for
   the binary to the config section of `bb.edn` under `:fennel-binary-path`.
 
