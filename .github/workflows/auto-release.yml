@@ -118,7 +118,7 @@ jobs:
           name: ${{ steps.build-release.outputs.name }}
           artifacts: ${{ steps.build-release.outputs.path }}
           commit: ${{ steps.latest-commit.outputs.sha }}
-          tag: ${{steps.build-release.outputs.tag-prefix}}v${{steps.build-release.outputs.version}}
+          tag: ${{steps.build-release.outputs.tag-prefix}}${{steps.build-release.outputs.version}}
           draft: true
           artifactErrorsFailBuild: true
           allowUpdates: true

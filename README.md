@@ -1,12 +1,55 @@
-This is a small template/example project to build games for the [Playdate](https://play.date) console
-with the [Fennel programming language](https://fennel-lang.org/), but it can be used to build
-pure Lua Playdate projects too.
+This is a small template project to build games for the [Playdate](https://play.date) console.  
+It allows you to program your Playdate app in [Lua](https://www.lua.org/),
+[Fennel](https://fennel-lang.org/), or a mix of both languages.
 
 ## Requirements
 
 * [babashka](https://babashka.org/) ( `bb` in snippets here) is used to execute build tasks.
-* The [PlaydateSDK](https://play.date/dev/) must be installed/downloaded and its path set in the `PLAYDATE_SDK_PATH` environment variable.
-* If there are `.fnl` files in the project, the `fennel` binary is expected to be available on your `PATH` to compile them.
+  _(It's recommended to add it to your `PATH` environment variable, so you can invoke it directly from the commandline.
+  Alternatively just chuck the executable in your project directory and add it to the `.gitignore`.)_
+* The [PlaydateSDK](https://play.date/dev/) must be installed/downloaded and its path set in the
+  `PLAYDATE_SDK_PATH` environment variable.
+* _(When using Fennel)_ The `fennel` binary is expected to be available on your `PATH`
+  to compile `.fnl` files in your project.
+
+## Getting started with [Lua](https://www.lua.org/)
+
+All you need to do is to add a `main.lua` file in the `src` folder.  
+By default, that file will serve as the starting point for the Playdate compiler
+when building your application.
+
+Here's a small code snippet you can add to `main.lua` to see some text on screen:
+
+```lua
+function playdate.update()
+  playdate.graphics.drawText("Hello *Lua* _World_", 30, 30)
+end
+```
+
+## Getting started with [Fennel](https://fennel-lang.org/)
+
+All you need to do is to add a `main.fnl` file in the `src` folder.  
+Fennel files will be compiled to Lua files of the same name (f.e. `main.fnl -> main.lua`).  
+By default, that file will serve as the starting point for the Playdate compiler
+when building your application.
+
+Here's a small code snippet you can add to `main.fnl` to see text on screen:
+
+```fennel
+(fn playdate.update []
+  (playdate.graphics.drawText "Hello *Fennel* _World_" 30 30))
+```
+
+## Hey, you just wrote the same thing twice?!
+
+Pretty much, yes. This project template is set up in such a way that you can use both Lua and Fennel
+at the same time in your project if you want. For example if you want write your game in Fennel,
+but still want to use some of the amazing libraries for Playdate that are written in Lua.
+([Like Noble Engine!](https://noblerobot.com/nobleengine))
+
+Just make sure you don't have Fennel and Lua files with the same name sit in the same directory.
+(for example having a `utils/text.lua` and `utils/text.fnl` file)  
+In such cases, the Lua file will be copied over the compiled Fennel file when the app is built.
 
 ## Building and testing
 
@@ -20,7 +63,7 @@ bb build-copy-sim
 This will compile all Fennel `.fnl` files (if any) in the `src` directory to Lua,
 and copy the compiled Lua files as well as any other files in the `src` directory into a `compiled-src` directory.
 _(Note to caution: Any `.lua` file that has the same name as a `.fnl` file
-  in the same directory will overwrite its compiled file!)_  
+in the same directory will overwrite its compiled file!)_  
 Then the Playdate compiler `pdc` will be called with the compiled sources as its input, and creates the PDX app.
 
 (If there are no `.fnl` files to compile, the `compiled-src` directory won't be used,
@@ -42,20 +85,33 @@ bb build-release
 
 This will build the project and pack everything up into a `.pdx.zip` file in a `builds` subdirectory.
 
+### Automatic GitHub draft release via GitHub action
+
+This template includes a GitHub action, which will create a new draft release (or update an existing
+one) for the current version in the `src/pdxinfo` file. By default, this action triggers whenever
+changes within the `src` folder are pushed to the `main` branch. This then will automatically
+run `bb build-release` on one of GitHub's machines, and (if the build succeeds) upload a `.pdx.zip`
+file of your app to a GitHub draft release for your current version.  
+You can then manually publish, edit, or delete the draft in the "Releases" section of your GitHub repo.
+
+If you don't want the automatic release build, you can just delete the `.github/workflows/auto-release.yml` file.
+Feel free to edit the file to your needs if you like to change when/how the automatic build runs.
+
 ### Build config
 
 Near the top of the `bb.edn` file is a config map, that is used to determine where the different
 parts of the build process get their input and where they write their output. Here's a description
 of each config key:
 
-| Key                 | Description                                                                                                                                                                                                                                                                                                        |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `:release-name`     | The name that the zip file will get which is created by the `build-release` task.<br/>Can take placeholders for values from the pdxinfo file.                                                                                                                                                                      |
-| `:sources`          | The directory where all your code and asset files are expected to be.                                                                                                                                                                                                                                              |
-| `:fennel-macros`    | A path relative to the `:sources` directory where Fennel macro modules are kept.<br/>These are only used by Fennel during compilation, and will not be compiled themselves.<br/>Non-`.fnl` files will still be picked up by the Playdate compiler if present.                                                      |
-| `:compiled-sources` | The directory where the combination of compiled `.fnl` files and copies of<br/>all other files in the `:sources` directory will be put by the `compile` task.<br/>It is also the directory that is used as input for the Playdate compiler.<br/>If there are no `.fnl` files to compile, this directory is unused. |
-| `:main-file`        | A relative path to the Lua file with which the Playdate compiler<br/>will start compilation. This is usually the file which defines the `playdate.update()` function.<br/>(If your main Fennel file is `game.fnl`, then put `game.lua` as the main file.)                                                          |
-| `:build-output`     | The directory where the PDX app built by the Playdate compiler will be put.<br/>                                                                                                                                                                                                                                   |
+| Key                   | Description                                                                                                                                                                                                                                                                                                        |
+|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `:release-name`       | The name that the zip file will get which is created by the `build-release` task.<br/>Can take placeholders for values from the pdxinfo file.                                                                                                                                                                      |
+| `:release-tag-prefix` | When an automatic release is created via the GitHub action, this string combined<br/>with the version of your app will be used as the git tag name for the release.                                                                                                                                                |
+| `:sources`            | The directory where all your code and asset files are expected to be.                                                                                                                                                                                                                                              |
+| `:fennel-macros`      | A path relative to the `:sources` directory where Fennel macro modules are kept.<br/>These are only used by Fennel during compilation, and will not be compiled themselves.<br/>Non-`.fnl` files will still be picked up by the Playdate compiler if present.                                                      |
+| `:compiled-sources`   | The directory where the combination of compiled `.fnl` files and copies of<br/>all other files in the `:sources` directory will be put by the `compile` task.<br/>It is also the directory that is used as input for the Playdate compiler.<br/>If there are no `.fnl` files to compile, this directory is unused. |
+| `:main-file`          | A relative path to the Lua file with which the Playdate compiler<br/>will start compilation. This is usually the file which defines the `playdate.update()` function.<br/>(If your main Fennel file is `game.fnl`, then put `game.lua` as the main file.)                                                          |
+| `:build-output`       | The directory where the PDX app built by the Playdate compiler will be put.<br/>                                                                                                                                                                                                                                   |
 
 ## Babashka tasks
 

@@ -11,8 +11,8 @@
                    ; Any key from the pdxinfo file can be used as placeholder.
                    :release-name       "${name} v${version}_b${buildNumber}"
                    ; When a release is created via the included GitHub action, this string
-                   ; will be prefixed before the version like so: {release-tag-prefix}v{version}
-                   :release-tag-prefix ""
+                   ; will be prefixed before the version like so: {release-tag-prefix}{version}
+                   :release-tag-prefix "v"
                    ; Directory where all code and assets are located
                    :sources            "./src/"
                    ; Directory relative to `:sources` where Fennel macro modules are placed.
