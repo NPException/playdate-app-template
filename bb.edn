@@ -13,11 +13,18 @@
                    ; When a release is created via the included GitHub action, this string
                    ; will be prefixed before the version like so: {release-tag-prefix}{version}
                    :release-tag-prefix "v"
+                   ; The location of the Playdate SDK. If this is empty, the build process
+                   ; will try to get the path from the `PLAYDATE_SDK_PATH` environment variable.
+                   :playdate-sdk-path  ""
+                   ; The location of the Fennel binary. If this is empty, the build process
+                   ; checks if `fennel` is available on the `PATH` environment variable.
+                   ; (Unused if no `.fnl` files are present.)
+                   :fennel-binary-path ""
                    ; Directory where all code and assets are located
                    :sources            "./src/"
                    ; Directory relative to `:sources` where Fennel macro modules are placed.
                    ; Fennel files within this directory will not be compiled directly.
-                   ; (but other file types will still be copied to `:compiled-sources`)
+                   ; (But other file types will still be copied to `:compiled-sources`. Unused if no `.fnl` files are present.)
                    :fennel-macros      "macros/"
                    ; Directory where the compiled Lua and other copied files will be put.
                    ; This is then used as the input directory for the Playdate compiler.
@@ -122,11 +129,14 @@
                   (fn [path attrs]
                     (if-not (fennel-file? path)
                       :continue
-                      (do (when-not (fs/which "fennel")
-                            (println "`fennel` is not available to this script. Make sure it is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
-                            (System/exit 1))
-                          (def fennel-project? true)        ; yucky reassignment, but it works nicely
-                          :terminate)))})))}
+                      (let [fennel-path (or (some-> (:fennel-binary-path config) (not-empty) (fs/path) (fs/canonicalize))
+                                          (fs/which "fennel"))]
+                        (when-not fennel-path
+                          (println "No Fennel binary specified. Either add a path to the binary under the config key `:fennel-binary-path`, or make sure that a `fennel` executable is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
+                          (System/exit 1))
+                        (def fennel-binary-path fennel-path)
+                        (def fennel-project? true)          ; yucky reassignment, but it works nicely
+                        :terminate)))})))}
 
 
   compile
@@ -145,7 +155,7 @@
                          :continue
                          (let [compiled-lua (:out (shell
                                                     {:dir (:sources config), :out :string}
-                                                    "fennel" "--compile" rel-path-str))]
+                                                    (str fennel-binary-path) "--compile" rel-path-str))]
                            (if-not compiled-lua
                              :terminate
                              (let [[path-without-extension] (fs/split-ext rel-path-str)
@@ -181,10 +191,12 @@
 
   -pd-sdk
   {:doc  "Checks if the Playdate SDK path is known"
-   :task (do (def pd-sdk-path (System/getenv "PLAYDATE_SDK_PATH"))
-             (when-not pd-sdk-path
-               (println "`PLAYDATE_SDK_PATH` environment variable is not set.\nIf you don't have the Playdate SDK yet, you can get it at https://play.date/dev/")
-               (System/exit 1)))}
+   :task (let [sdk-dir (or (not-empty (:playdate-sdk-path config))
+                         (not-empty (System/getenv "PLAYDATE_SDK_PATH")))]
+           (when-not sdk-dir
+             (println "Playdate SDK path not specified. Either set the path to it in the `:playdate-sdk-path` config value, or add its path as the `PLAYDATE_SDK_PATH` environment variable.\nIf you don't have the Playdate SDK yet, you can get it at https://play.date/dev/")
+             (System/exit 1))
+           (def pd-sdk-path (fs/canonicalize (fs/path sdk-dir))))}
 
 
   create-pdx
@@ -195,7 +207,7 @@
               {:dir (if fennel-project?
                       (:compiled-sources config)
                       (:sources config))}
-              (str pd-sdk-path "/bin/pdc") "-m" (:main-file config) pdx-output-path)}
+              (str (fs/path pd-sdk-path "/bin/pdc")) "-m" (:main-file config) pdx-output-path)}
 
 
   -file-utils

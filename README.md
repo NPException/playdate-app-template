@@ -7,10 +7,15 @@ It allows you to program your Playdate app in [Lua](https://www.lua.org/),
 * [babashka](https://babashka.org/) ( `bb` in snippets here) is used to execute build tasks.
   _(It's recommended to add it to your `PATH` environment variable, so you can invoke it directly from the commandline.
   Alternatively just chuck the executable in your project directory and add it to the `.gitignore`.)_
-* The [PlaydateSDK](https://play.date/dev/) must be installed/downloaded and its path set in the
-  `PLAYDATE_SDK_PATH` environment variable.
-* _(When using Fennel)_ The `fennel` binary is expected to be available on your `PATH`
-  to compile `.fnl` files in your project.
+* The [PlaydateSDK](https://play.date/dev/) must be available to the build process either via the `PLAYDATE_SDK_PATH` environment variable,
+  or by explicitly adding its directory path to the config section of `bb.edn` under `:playdate-sdk-path`.
+* _(Only when using Fennel)_ The Fennel binary must be available to the build process either
+  by a `fennel` executable on your `PATH` environment variable, or by explicitly adding a path for
+  the binary to the config section of `bb.edn` under `:fennel-binary-path`.
+
+Really all the heavy lifting is done by [babashka](https://babashka.org/). Technically all you
+need to use this build process for your own projects is to copy the [bb.edn file](bb.edn) into
+your own project, and adjust the values in its `:config` section according to your needs.
 
 ## Getting started with [Lua](https://www.lua.org/)
 
@@ -103,15 +108,17 @@ Near the top of the `bb.edn` file is a config map, that is used to determine whe
 parts of the build process get their input and where they write their output. Here's a description
 of each config key:
 
-| Key                   | Description                                                                                                                                                                                                                                                                                                        |
-|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `:release-name`       | The name that the zip file will get which is created by the `build-release` task.<br/>Can take placeholders for values from the pdxinfo file.                                                                                                                                                                      |
-| `:release-tag-prefix` | When an automatic release is created via the GitHub action, this string combined<br/>with the version of your app will be used as the git tag name for the release.                                                                                                                                                |
-| `:sources`            | The directory where all your code and asset files are expected to be.                                                                                                                                                                                                                                              |
-| `:fennel-macros`      | A path relative to the `:sources` directory where Fennel macro modules are kept.<br/>These are only used by Fennel during compilation, and will not be compiled themselves.<br/>Non-`.fnl` files will still be picked up by the Playdate compiler if present.                                                      |
-| `:compiled-sources`   | The directory where the combination of compiled `.fnl` files and copies of<br/>all other files in the `:sources` directory will be put by the `compile` task.<br/>It is also the directory that is used as input for the Playdate compiler.<br/>If there are no `.fnl` files to compile, this directory is unused. |
-| `:main-file`          | A relative path to the Lua file with which the Playdate compiler<br/>will start compilation. This is usually the file which defines the `playdate.update()` function.<br/>(If your main Fennel file is `game.fnl`, then put `game.lua` as the main file.)                                                          |
-| `:build-output`       | The directory where the PDX app built by the Playdate compiler will be put.<br/>                                                                                                                                                                                                                                   |
+| <div style="width:12em">Key</div> | Description                                                                                                                                                                                                                                                                                            |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `:release-name`                   | The name that the zip file will get which is created by the `build-release` task. Can take placeholders for values from the pdxinfo file.                                                                                                                                                              |
+| `:release-tag-prefix`             | When an automatic release is created via the GitHub action, this string combined with the version of your app will be used as the git tag name for the release.                                                                                                                                        |
+| `:playdate-sdk-path`              | The location of the Playdate SDK. If this is empty, the build process will try to get the path from the `PLAYDATE_SDK_PATH` environment variable.                                                                                                                                                      |
+| `:fennel-binary-path`             | The location of the Fennel binary. If this is empty, the build process checks if `fennel` is available on the `PATH` environment variable.                                                                                                                                                             |
+| `:sources`                        | The directory where all your code and asset files are expected to be.                                                                                                                                                                                                                                  |
+| `:fennel-macros`                  | A path relative to the `:sources` directory where Fennel macro modules are kept. These are only used by Fennel during compilation, and will not be compiled themselves. Non-`.fnl` files will still be picked up by the Playdate compiler if present.                                                  |
+| `:compiled-sources`               | The directory where the combination of compiled `.fnl` files and copies of all other files in the `:sources` directory will be put by the `compile` task. It is also the directory that is used as input for the Playdate compiler. If there are no `.fnl` files to compile, this directory is unused. |
+| `:main-file`                      | A relative path to the Lua file with which the Playdate compiler will start compilation. This is usually the file which defines the `playdate.update()` function. (If your main Fennel file is `game.fnl`, then put `game.lua` as the main file.)                                                      |
+| `:build-output`                   | The directory where the PDX app built by the Playdate compiler will be put.                                                                                                                                                                                                                            |
 
 ## Babashka tasks
 
@@ -120,18 +127,18 @@ of the tasks `build` and `start-sim`.
 
 Other available tasks are:
 
-| Task              | Description                                                                                                                                                                                                          |
-|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `clean-compiled`  | Deletes the directory generated via the `compile` task.                                                                                                                                                              |
-| `compile`         | Compiles all Fennel files using `fennel` and copies<br/>all other files to the `:compiled-sources` directory.<br/>Does nothing if there are no `.fnl` files in the project.                                          |
-| `clean`           | Removes the PDX build output directory                                                                                                                                                                               |
-| `create-pdx`      | Builds all files in the `:compiled-sources` directory into a Playdate PDX app.                                                                                                                                       |
-| `build`           | Compiles Fennel (if necessary) and builds everything into a Playdate PDX app.                                                                                                                                        |
-| `copy-pdx-to-sim` | Copies the PDX app to the Playdate simulator's games directory,<br/>so it can be selected in the simulator's menu.                                                                                                   |
-| `start-sim`       | Starts the Playdate simulator with the PDX app in the build output directory                                                                                                                                         |
-| `build-and-sim`   | Calls the `build` task and then starts the Playdate simulator.                                                                                                                                                       |
-| `build-copy-sim`  | Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator.                                                                                                                                   |
-| `build-release`   | Increments the `buildNumber` in pdxinfo (if sources changes since last release),<br/>calls `build` and puts the resulting PDX app in a zip.<br/>The name of the zip is determined by the `:release-name` config key. |
+| <div style="width:10em">Task</div> | Description                                                                                                                                                                                                  |
+|:-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `clean-compiled`                   | Deletes the directory generated via the `compile` task.                                                                                                                                                      |
+| `compile`                          | Compiles all Fennel files using `fennel` and copies all other files to the `:compiled-sources` directory. Does nothing if there are no `.fnl` files in the project.                                          |
+| `clean`                            | Removes the PDX build output directory                                                                                                                                                                       |
+| `create-pdx`                       | Builds all files in the `:compiled-sources` directory into a Playdate PDX app.                                                                                                                               |
+| `build`                            | Compiles Fennel (if necessary) and builds everything into a Playdate PDX app.                                                                                                                                |
+| `copy-pdx-to-sim`                  | Copies the PDX app to the Playdate simulator's games directory, so it can be selected in the simulator's menu.                                                                                               |
+| `start-sim`                        | Starts the Playdate simulator with the PDX app in the build output directory                                                                                                                                 |
+| `build-and-sim`                    | Calls the `build` task and then starts the Playdate simulator.                                                                                                                                               |
+| `build-copy-sim`                   | Calls the `build` and `copy-pdx-to-sim` tasks, then starts the Playdate Simulator.                                                                                                                           |
+| `build-release`                    | Increments the `buildNumber` in pdxinfo (if sources changes since last release), calls `build` and puts the resulting PDX app in a zip. The name of the zip is determined by the `:release-name` config key. |
 
 You can get the list of all available tasks and what they do by running:
 
