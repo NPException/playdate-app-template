@@ -2,6 +2,11 @@ This is a small template project to build games for the [Playdate](https://play.
 It allows you to program your Playdate app in [Lua](https://www.lua.org/),
 [Fennel](https://fennel-lang.org/), or a mix of both languages.
 
+* _**Do I need a Playdate console to be able to make games for it?**_  
+  No! The Playdate SDK comes with a simulator, so you can create games for the Playdate
+  even without owning one.  
+  😎
+
 ## Requirements
 
 * [babashka](https://babashka.org/) ( `bb` in snippets here) is used to execute build tasks.
