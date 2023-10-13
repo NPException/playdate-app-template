@@ -1,4 +1,4 @@
-/playdate-fennel-template.iml
+*.iml
 /.idea/
 /.sentry-native/
 /builds/
