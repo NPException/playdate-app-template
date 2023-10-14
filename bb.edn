@@ -83,7 +83,10 @@
   -pdxinfo
   {:doc     "Prepares reading from and writing to the pdxinfo file"
    :depends [-pdx-info-path]
-   :task    (let [pdxinfo-lines (atom (->> (fs/read-all-lines pdxinfo-path)
+   :task    (let [pdx-info-text (String. (fs/read-all-bytes pdxinfo-path))
+                  newline-regex (or (re-pattern "\r?\n") "\n")
+                  newline (re-find newline-regex pdx-info-text)
+                  pdxinfo-lines (atom (->> (clojure.string/split pdx-info-text newline-regex -1)
                                         (mapv (fn [line]
                                                 (if (or (str/blank? line) (str/starts-with? line "#"))
                                                   line
@@ -116,7 +119,9 @@
                          (if (vector? line)
                            (str (first line) "=" (second line))
                            line)))
-                  (fs/write-lines pdxinfo-path))))}
+                  (str/join newline)
+                  (.getBytes)
+                  (fs/write-bytes pdxinfo-path))))}
 
 
   pdxinfo
