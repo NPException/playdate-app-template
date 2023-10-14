@@ -30,7 +30,7 @@
                    ; Directory where the compiled Lua and other copied files will be put.
                    ; This is then used as the input directory for the Playdate compiler.
                    ; If there are no `.fnl` files this is unused and `pdc` uses `:sources` directly.
-                   :compiled-sources   "./compiled-src/"
+                   :compiled-sources   "./compiled-source/"
                    ; Lua file that is the program's entry point. (Note that a "main.fnl" file will
                    ; be compiled to "main.lua". Due to how the Playdate compiler does things,
                    ; this will have no effect if you set this to a different file but your source

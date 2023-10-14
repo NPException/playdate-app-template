@@ -26,7 +26,7 @@ if necessary.
 
 ## Getting started with [Lua](https://www.lua.org/)
 
-All you need to do is to add a `main.lua` file in the `src` folder.  
+All you need to do is to add a `main.lua` file in the `source` folder.  
 By default, that file will serve as the starting point for the Playdate compiler
 when building your application.
 
@@ -40,7 +40,7 @@ end
 
 ## Getting started with [Fennel](https://fennel-lang.org/)
 
-All you need to do is to add a `main.fnl` file in the `src` folder.  
+All you need to do is to add a `main.fnl` file in the `source` folder.  
 Fennel files will be compiled to Lua files of the same name (f.e. `main.fnl -> main.lua`).  
 By default, that file will serve as the starting point for the Playdate compiler
 when building your application.
@@ -72,14 +72,14 @@ of the simulator too, just run the `build-copy-sim` Babashka task by executing:
 bb build-copy-sim
 ```
 
-This will compile all Fennel `.fnl` files (if any) in the `src` directory to Lua,
-and copy the compiled Lua files as well as any other files in the `src` directory into a `compiled-src` directory.
+This will compile all Fennel `.fnl` files (if any) in the `source` directory to Lua,
+and copy the compiled Lua files as well as any other files in the `source` directory into a `compiled-source` directory.
 _(Note to caution: Any `.lua` file that has the same name as a `.fnl` file
 in the same directory will overwrite its compiled file!)_  
 Then the Playdate compiler `pdc` will be called with the compiled sources as its input, and creates the PDX app.
 
-(If there are no `.fnl` files to compile, the `compiled-src` directory won't be used,
-and the Playdate compiler will be called with the `src` directory as its input instead.)
+(If there are no `.fnl` files to compile, the `compiled-source` directory won't be used,
+and the Playdate compiler will be called with the `source` directory as its input instead.)
 
 Then the PDX app will be copied into the Simulator's games director to make it available in the
 Simulator's menu. (So you can check your menu artwork, animations, etc.)
@@ -100,8 +100,8 @@ This will build the project and pack everything up into a `.pdx.zip` file in a `
 ### Automatic GitHub draft release via GitHub action
 
 This template includes a GitHub action, which will create a new draft release (or update an existing
-one) for the current version in the `src/pdxinfo` file. By default, this action triggers whenever
-changes within the `src` folder are pushed to the `main` branch. This then will automatically
+one) for the current version in the `source/pdxinfo` file. By default, this action triggers whenever
+changes within the `source` folder are pushed to the `main` branch. This then will automatically
 run `bb build-release` on one of GitHub's machines, and (if the build succeeds) upload a `.pdx.zip`
 file of your app to a GitHub draft release for your current version.  
 You can then manually publish, edit, or delete the draft in the "Releases" section of your GitHub repo.
