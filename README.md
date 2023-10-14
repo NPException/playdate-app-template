@@ -87,6 +87,11 @@ Simulator's menu. (So you can check your menu artwork, animations, etc.)
 
 Finally, the Simulator will be started with the PDX app.
 
+#### Using Visual Studio Code?
+
+I've included a `.vscode/tasks.json` file with 3 common tasks preconfigured. If you run the default
+build task (`Ctrl+Shift+B`), `bb build-copy-sim` will be run in the terminal.
+
 ### Release
 
 To create a `.pdx.zip` file of your game which you can distribute online (for example on [itch.io](https://itch.io)),
