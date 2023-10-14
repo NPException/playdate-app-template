@@ -20,8 +20,9 @@
                    ; checks if `fennel` is available on the `PATH` environment variable.
                    ; (Unused if no `.fnl` files are present.)
                    :fennel-binary-path ""
-                   ; Directory where all code and assets are located
-                   :sources            "./src/"
+                   ; Possible directories where all code and assets are located.
+                   ; The first one that is found will be used.
+                   :sources            ["./src/" "./Source/" "./Sources/" "./source/" "./sources/"]
                    ; Directory relative to `:sources` where Fennel macro modules are placed.
                    ; Fennel files within this directory will not be compiled directly.
                    ; (But other file types will still be copied to `:compiled-sources`. Unused if no `.fnl` files are present.)
@@ -30,8 +31,10 @@
                    ; This is then used as the input directory for the Playdate compiler.
                    ; If there are no `.fnl` files this is unused and `pdc` uses `:sources` directly.
                    :compiled-sources   "./compiled-src/"
-                   ; Lua file that is the program's entry point.
-                   ; (note that a "main.fnl" file will be compiled to "main.lua")
+                   ; Lua file that is the program's entry point. (Note that a "main.fnl" file will
+                   ; be compiled to "main.lua". Due to how the Playdate compiler does things,
+                   ; this will have no effect if you set this to a different file but your source
+                   ; folder still contains a `main.lua` or `main.fnl` file.)
                    :main-file          "main.lua"
                    ; Directory where the Playdate compiler will output the final PDX app.
                    :build-output       "./builds/"})
@@ -43,55 +46,77 @@
                   (str/includes? os-name "mac") :mac
                   :else :linux)))
 
-      (def src-dir (fs/canonicalize (fs/path (:sources config))))
-      (def macros-dir (fs/path src-dir (:fennel-macros config)))
-
-      (def pdxinfo-path (fs/path src-dir "pdxinfo")))
+      (def compiled-src-dir (fs/path (:compiled-sources config))))
 
 
   ;; Available Babashka Tasks
 
-  pdxinfo-path
-  {:doc  "Prints the path of the pdxinfo file"
-   :task (print (str (fs/relativize (fs/cwd) pdxinfo-path)))}
+  -src-dir
+  {:task (let [dir (->> (:sources config)
+                     (map fs/path)
+                     (map fs/canonicalize)
+                     ; pick the first directory from `:sources` that exists
+                     (filter fs/directory?)
+                     first)]
+           (when-not dir
+             (println (str "No source directory found."))
+             (System/exit 1))
+           (def src-dir dir))}
+
+
+  -macros-dir
+  {:depends [-src-dir]
+   :task    (def macros-dir (fs/path src-dir (:fennel-macros config)))}
+
+
+  -pdx-info-path
+  {:depends [-src-dir]
+   :task    (def pdxinfo-path (fs/path src-dir "pdxinfo"))}
+
+
+  print-pdxinfo-path
+  {:doc     "Prints the path of the pdxinfo file"
+   :depends [-pdx-info-path]
+   :task    (print (str (fs/relativize (fs/cwd) pdxinfo-path)))}
 
 
   -pdxinfo
-  {:doc  "Prepares reading from and writing to the pdxinfo file"
-   :task (let [pdxinfo-lines (atom (->> (fs/read-all-lines pdxinfo-path)
-                                     (mapv (fn [line]
-                                             (if (or (str/blank? line) (str/starts-with? line "#"))
-                                               line
-                                               (str/split line (re-pattern "=") 2))))))]
+  {:doc     "Prepares reading from and writing to the pdxinfo file"
+   :depends [-pdx-info-path]
+   :task    (let [pdxinfo-lines (atom (->> (fs/read-all-lines pdxinfo-path)
+                                        (mapv (fn [line]
+                                                (if (or (str/blank? line) (str/starts-with? line "#"))
+                                                  line
+                                                  (str/split line (re-pattern "=") 2))))))]
 
-           ; function to read a value from the pdxinfo file
-           (defn pdxinfo [key]
-             (let [value (->> (deref pdxinfo-lines)
-                           (filter (fn [[k v]] (= k key)))
-                           first
-                           second)]
-               (when-not value
-                 (println (str "Tried to read `" key "` from pdxinfo file, but they key is missing in the file."))
-                 (System/exit 1))
-               value))
+              ; function to read a value from the pdxinfo file
+              (defn pdxinfo [key]
+                (let [value (->> (deref pdxinfo-lines)
+                              (filter (fn [[k v]] (= k key)))
+                              first
+                              second)]
+                  (when-not value
+                    (println (str "Tried to read `" key "` from pdxinfo file, but they key is missing in the file."))
+                    (System/exit 1))
+                  value))
 
-           ; function to change a value
-           (defn pdxinfo-set! [key value]
-             (assert (string? value))
-             ; first set the new value in memory
-             (->> (swap! pdxinfo-lines
-                    (fn [lines]
-                      (mapv (fn [[k _ :as line]]
-                              (if (= key k)
-                                [key value]
-                                line))
-                        lines)))
-               ; store the new lines to the file
-               (map (fn [line]
-                      (if (vector? line)
-                        (str (first line) "=" (second line))
-                        line)))
-               (fs/write-lines pdxinfo-path))))}
+              ; function to change a value
+              (defn pdxinfo-set! [key value]
+                (assert (string? value))
+                ; first set the new value in memory
+                (->> (swap! pdxinfo-lines
+                       (fn [lines]
+                         (mapv (fn [[k _ :as line]]
+                                 (if (= key k)
+                                   [key value]
+                                   line))
+                           lines)))
+                  ; store the new lines to the file
+                  (map (fn [line]
+                         (if (vector? line)
+                           (str (first line) "=" (second line))
+                           line)))
+                  (fs/write-lines pdxinfo-path))))}
 
 
   pdxinfo
@@ -107,36 +132,37 @@
 
   clean-compiled
   {:doc  "Deletes the directory generated via the `compile` task."
-   :task (when (fs/exists? (:compiled-sources config))
-           (println (str "Deleting `" (:compiled-sources config) "`"))
-           (fs/delete-tree (:compiled-sources config)))}
+   :task (when (fs/exists? compiled-src-dir)
+           (println (str "Deleting `" compiled-src-dir "`"))
+           (fs/delete-tree compiled-src-dir))}
 
 
   -fennel-project?
-  {:doc  "Walk the directory. When finding a fennel file, checks if the `fennel` command exists."
-   :task (do (defn fennel-file? [path]
-               (= "fnl" (fs/extension path)))
-             (def fennel-project? false)
-             (let [has-macros-dir? (fs/directory? macros-dir)]
-               (fs/walk-file-tree src-dir
-                 {:pre-visit-dir
-                  (fn [path attrs]
-                    ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
-                    (if (and has-macros-dir? (fs/same-file? macros-dir path))
-                      :skip-subtree
-                      :continue))
-                  :visit-file
-                  (fn [path attrs]
-                    (if-not (fennel-file? path)
-                      :continue
-                      (let [fennel-path (or (some-> (:fennel-binary-path config) (not-empty) (fs/path) (fs/canonicalize))
-                                          (fs/which "fennel"))]
-                        (when-not fennel-path
-                          (println "No Fennel binary specified. Either add a path to the binary under the config key `:fennel-binary-path`, or make sure that a `fennel` executable is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
-                          (System/exit 1))
-                        (def fennel-binary-path fennel-path)
-                        (def fennel-project? true)          ; yucky reassignment, but it works nicely
-                        :terminate)))})))}
+  {:doc     "Walk the directory. When finding a fennel file, checks if the `fennel` command exists."
+   :depends [-src-dir -macros-dir]
+   :task    (do (defn fennel-file? [path]
+                  (= "fnl" (fs/extension path)))
+                (def fennel-project? false)
+                (let [has-macros-dir? (fs/directory? macros-dir)]
+                  (fs/walk-file-tree src-dir
+                    {:pre-visit-dir
+                     (fn [path attrs]
+                       ; we don't care about .fnl files within the macros directory, since those aren't compiled anyway
+                       (if (and has-macros-dir? (fs/same-file? macros-dir path))
+                         :skip-subtree
+                         :continue))
+                     :visit-file
+                     (fn [path attrs]
+                       (if-not (fennel-file? path)
+                         :continue
+                         (let [fennel-path (or (some-> (:fennel-binary-path config) (not-empty) (fs/path) (fs/canonicalize))
+                                             (fs/which "fennel"))]
+                           (when-not fennel-path
+                             (println "No Fennel binary specified. Either add a path to the binary under the config key `:fennel-binary-path`, or make sure that a `fennel` executable is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
+                             (System/exit 1))
+                           (def fennel-binary-path fennel-path)
+                           (def fennel-project? true)       ; yucky reassignment, but it works nicely
+                           :terminate)))})))}
 
 
   compile
@@ -144,7 +170,7 @@
    :depends [clean-compiled -fennel-project?]
    :task    (when fennel-project?
               (println "Compiling Fennel")
-              (fs/create-dirs (:compiled-sources config))
+              (fs/create-dirs compiled-src-dir)
               (fs/walk-file-tree src-dir
                 {:visit-file
                  (fn [path attrs]
@@ -154,17 +180,17 @@
                        (if (fs/starts-with? path macros-dir)
                          :continue
                          (let [compiled-lua (:out (shell
-                                                    {:dir (:sources config), :out :string}
+                                                    {:dir src-dir, :out :string}
                                                     (str fennel-binary-path) "--compile" rel-path-str))]
                            (if-not compiled-lua
                              :terminate
                              (let [[path-without-extension] (fs/split-ext rel-path-str)
-                                   lua-file (fs/path (:compiled-sources config) (str path-without-extension ".lua"))]
+                                   lua-file (fs/path compiled-src-dir (str path-without-extension ".lua"))]
                                (fs/create-dirs (fs/parent lua-file))
                                (fs/write-bytes lua-file (.getBytes (str compiled-lua)))
                                :continue))))
                        ; copy any non-fennel files
-                       (let [target-path (fs/path (:compiled-sources config) rel-path-str)]
+                       (let [target-path (fs/path compiled-src-dir rel-path-str)]
                          (fs/create-dirs (fs/parent target-path))
                          (fs/copy path target-path {:replace-existing true})
                          :continue))))}))}
@@ -205,8 +231,8 @@
    :enter   (println "Building PDX app")
    :task    (shell
               {:dir (if fennel-project?
-                      (:compiled-sources config)
-                      (:sources config))}
+                      compiled-src-dir
+                      src-dir)}
               (str (fs/path pd-sdk-path "/bin/pdc")) "-m" (:main-file config) pdx-output-path)}
 
 
@@ -253,7 +279,7 @@
 
   -bump-build-nr
   {:doc     "Increments the `buildNumber` in the pdxinfo file if files in `:sources` have changed."
-   :depends [-pdxinfo -last-build-file -file-utils]
+   :depends [-pdxinfo -last-build-file -file-utils -src-dir]
    :enter   (println "Checking if files changed")
    :task    (let [last-hash (when (fs/exists? (fs/file last-build-file))
                               (str/trim (slurp (fs/file last-build-file))))
@@ -346,6 +372,3 @@
                             (str (fs/relativize build-path path)))}))}
 
   }}
-
-; TODO: - separate example game(s) from project template (either as separate branches or in sub directory)
-

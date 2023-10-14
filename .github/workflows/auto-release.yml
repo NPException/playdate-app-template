@@ -91,7 +91,7 @@ jobs:
           then
             exit 1
           fi
-          echo "pdxinfo-path=$(bb pdxinfo-path)" >> $GITHUB_OUTPUT
+          echo "pdxinfo-path=$(bb print-pdxinfo-path)" >> $GITHUB_OUTPUT
           echo "name=$(bb release-name)" >> $GITHUB_OUTPUT
           echo "path=$(bb release-path)" >> $GITHUB_OUTPUT
           echo "version=$(bb pdxinfo version)" >> $GITHUB_OUTPUT
