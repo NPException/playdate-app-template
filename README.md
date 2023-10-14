@@ -158,7 +158,11 @@ bb tasks
 
 I've put this project under the very permissive MIT License (unless specified otherwise in a file).
 For your convenience I also put the license text at the bottom of the `bb.edn` file,
-so you don't need to bother mention the original copyright and license of the file in your own projects.  
+so you don't need to bother mention the original copyright and license of the file in your own projects.
+
+When using this repository as a template for your own project, I recommend replacing the `LICENSE`
+file with a license of your choice. (Or just remove it if you prefer full restrictive ownership
+of your code)
 
 ## Questions?
 
