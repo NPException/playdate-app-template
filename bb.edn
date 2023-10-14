@@ -238,7 +238,7 @@
               {:dir (if fennel-project?
                       compiled-src-dir
                       src-dir)}
-              (str (fs/path pd-sdk-path "/bin/pdc")) "-m" (:main-file config) pdx-output-path)}
+              (str (fs/path pd-sdk-path "bin/pdc")) "-m" (:main-file config) pdx-output-path)}
 
 
   -file-utils
