@@ -22,7 +22,8 @@ It allows you to program your Playdate app in [Lua](https://www.lua.org/),
 All the heavy lifting is done by [babashka](https://babashka.org/). If you want to adapt this build process for
 your existing projects, all you need to do is to copy the [bb.edn file](bb.edn) into
 your project and maybe adjust the values in the `bb.edn`'s `config` section according to your needs
-if necessary.
+if necessary. If you also want the automated draft release when you push your changes to GitHub,
+you just need to copy the `.github` folder into your project as well.
 
 ## Getting started with [Lua](https://www.lua.org/)
 
