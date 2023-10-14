@@ -154,6 +154,12 @@ You can get the list of all available tasks and what they do by running:
 bb tasks
 ```
 
+## License
+
+I've put this project under the very permissive MIT License (unless specified otherwise in a file).
+For your convenience I also put the license text at the bottom of the `bb.edn` file,
+so you don't need to bother mention the original copyright and license of the file in your own projects.  
+
 ## Questions?
 
 If you have any questions feel free to open an issue or contact me on social media:

@@ -1,4 +1,7 @@
--- This file contains bugfixes for bugs in the CoreLibs of Playdate SDK 2.0.3
+-- [License] This file is dedicated to the public domain, and marked with CC0 1.0.
+--           To view a copy of this license, visit http://creativecommons.org/publicdomain/zero/1.0
+
+-- This file contains bug fixes for bugs in the CoreLibs of Playdate SDK 2.0.3
 -- If you import any of the libraries listed below in your app, make sure to import this
 -- file after all other imports in your main file.
 -- Affected libraries:
