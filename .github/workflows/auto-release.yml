@@ -16,7 +16,7 @@
 #
 # If the `bb build-release` part fails, the remaining steps will not be executed.
 
-name: Create Release
+name: Automated Release
 
 # Controls when the workflow will run
 on:
