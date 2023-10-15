@@ -10,9 +10,9 @@
                    ; Name of the zip file when the `build-release` task is called.
                    ; Any key from the pdxinfo file can be used as placeholder.
                    :release-name       "${name} v${version}_b${buildNumber}"
-                   ; When a release is created via the included GitHub action, this string
-                   ; will be prefixed before the version like so: {release-tag-prefix}{version}
-                   :release-tag-prefix "v"
+                   ; When a release is created via the included GitHub action, this will be used
+                   ; as the tag. Any key from the pdxinfo file can be used as placeholder.
+                   :release-tag        "v${version}"
                    ; The location of the Playdate SDK. If this is empty, the build process
                    ; will try to get the path from the `PLAYDATE_SDK_PATH` environment variable.
                    :playdate-sdk-path  ""
@@ -46,7 +46,18 @@
                   (str/includes? os-name "mac") :mac
                   :else :linux)))
 
-      (def compiled-src-dir (fs/path (:compiled-sources config))))
+      (def compiled-src-dir (fs/path (:compiled-sources config)))
+
+      ; Helper function. Takes a String that includes placeholders of the form `${key}`,
+      ; and replaces those with the value retrieved by passing the key to `mapping-fn`
+      (defn format-with [s mapping-fn]
+        (str/replace s
+          (re-pattern "\\$\\{([^\\}]+)\\}")
+          (fn [[full-match key]]
+            ; put the placeholder back in if `mapping-fn` returns nil
+            (if-some [val (mapping-fn key)]
+              (str val)
+              (str "${" key "}"))))))
 
 
   ;; Available Babashka Tasks
@@ -331,30 +342,28 @@
    :depends [build copy-pdx-to-sim start-sim]}
 
 
-  -current-release-name
+  -format-with-pdxinfo
   {:depends [-pdxinfo]
-   :task    (defn current-release-name []
-              (str/replace (:release-name config)
-                (re-pattern "\\$\\{([^\\}]+)\\}")
-                (fn [[full-match key]]
-                  (pdxinfo key))))}
+   :task    (defn format-with-pdxinfo [s]
+              (format-with s pdxinfo))}
 
 
   release-name
   {:doc     "Prints the name the release would have with the current pdxinfo data."
-   :depends [-current-release-name]
-   :task    (print (current-release-name))}
+   :depends [-format-with-pdxinfo]
+   :task    (print (format-with-pdxinfo (:release-name config)))}
 
 
-  release-tag-prefix
-  {:doc  "Prints the config value for :release-tag-prefix"
-   :task (print (:release-tag-prefix config))}
+  release-tag
+  {:doc     "Prints the release-tag string."
+   :depends [-format-with-pdxinfo]
+   :task    (print (format-with-pdxinfo (:release-tag config)))}
 
 
   -current-release-path
-  {:depends [-build-path -current-release-name]
+  {:depends [-build-path -format-with-pdxinfo]
    :task    (defn current-release-path []
-              (fs/path build-path (str (current-release-name) ".pdx.zip")))}
+              (fs/path build-path (format-with-pdxinfo (str (:release-name config) ".pdx.zip"))))}
 
 
   release-path
