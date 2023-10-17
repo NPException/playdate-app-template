@@ -171,19 +171,30 @@
                      (fn [path attrs]
                        (if-not (fennel-file? path)
                          :continue
-                         (let [fennel-path (or (some-> (:fennel-binary-path config) (not-empty) (fs/path) (fs/canonicalize))
-                                             (fs/which "fennel"))]
-                           (when-not fennel-path
-                             (println "No Fennel binary specified. Either add a path to the binary under the config key `:fennel-binary-path`, or make sure that a `fennel` executable is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
-                             (System/exit 1))
-                           (def fennel-binary-path fennel-path)
-                           (def fennel-project? true)       ; yucky reassignment, but it works nicely
-                           :terminate)))})))}
+                         (do (def fennel-project? true)     ; yucky reassignment, but it works nicely
+                             :terminate)))})))}
+
+
+  fennel?
+  {:doc     "Prints `true` or `false` depending on if this project contains .fnl files."
+   :depends [-fennel-project?]
+   :task    (print fennel-project?)}
+
+
+  -fennel-binary
+  {:depends [-fennel-project?]
+   :task    (when fennel-project?
+              (let [fennel-path (or (some-> (:fennel-binary-path config) (not-empty) (fs/path) (fs/canonicalize))
+                                  (fs/which "fennel"))]
+                (when-not fennel-path
+                  (println "No Fennel binary specified. Either add a path to the binary under the config key `:fennel-binary-path`, or make sure that a `fennel` executable is available on your PATH.\nIf you don't have Fennel yet, you can get the binary at https://fennel-lang.org/setup#downloading-a-fennel-binary")
+                  (System/exit 1))
+                (def fennel-binary-path fennel-path)))}
 
 
   compile
   {:doc     "Compiles all Fennel files using `fennel` and copies all other files to the `:compiled-sources` directory. Does nothing if there are no `.fnl` files in the project."
-   :depends [clean-compiled -fennel-project?]
+   :depends [clean-compiled -fennel-binary]
    :task    (when fennel-project?
               (println "Compiling Fennel")
               (fs/create-dirs compiled-src-dir)

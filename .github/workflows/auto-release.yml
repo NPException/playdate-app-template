@@ -70,13 +70,19 @@ jobs:
         with:
           babashka-version: 1.3.185
 
-      # TODO: skip "Setup Homebrew" and "Install Fennel" if no fennel code is present (add babashka task to check that)
+      - name: Check for Fennel files
+        id: check-fennel-files
+        run: |
+          echo "is-fennel-project=$(bb fennel?)" >> $GITHUB_OUTPUT
+
       - name: Setup Homebrew
         id: setup-homebrew
+        if: steps.check-fennel-files.outputs.is-fennel-project == 'true'
         uses: Homebrew/actions/setup-homebrew@master
 
       - name: Install Fennel
         id: install-fennel
+        if: steps.check-fennel-files.outputs.is-fennel-project == 'true'
         run: brew install fennel
 
       - name: Install Playdate SDK
@@ -121,7 +127,7 @@ jobs:
           name: ${{ steps.build-release.outputs.name }}
           artifacts: ${{ steps.build-release.outputs.zip-path }}
           commit: ${{ steps.latest-commit.outputs.sha }}
-          tag: ${{steps.build-release.outputs.tag}}
+          tag: ${{ steps.build-release.outputs.tag }}
           draft: true
           artifactErrorsFailBuild: true
           allowUpdates: true
