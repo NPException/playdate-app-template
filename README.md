@@ -103,17 +103,17 @@ bb build-release
 
 This will build the project and pack everything up into a `.pdx.zip` file in a `builds` subdirectory.
 
-### Automatic GitHub draft release via GitHub action
+### Automatic GitHub release via GitHub action
 
-This template includes a GitHub action, which will create a new draft release (or update an existing
+This template includes a GitHub action, which will create a new release (or update an existing
 one) for the current version in the `source/pdxinfo` file. By default, this action triggers whenever
 changes within the `source` folder are pushed to the `main` branch. This then will automatically
 run `bb build-release` on one of GitHub's machines, and (if the build succeeds) upload a `.pdx.zip`
 file of your app to a GitHub draft release for your current version.  
-You can then manually publish, edit, or delete the draft in the "Releases" section of your GitHub repo.
+You can then manually publish, edit, or delete the release in the "Releases" section of your GitHub repo.
+See the `:automated-release` config section in `bb.edn` for a bit more details.
 
 If you don't want the automatic release build, you can just delete the `.github/workflows/auto-release.yml` file.
-Feel free to edit the file to your needs if you like to change when/how the automatic build runs.
 
 ### Build config
 

@@ -105,7 +105,8 @@ jobs:
           echo "zip-path=$(bb release-path)" >> $GITHUB_OUTPUT
           echo "version=$(bb pdxinfo version)" >> $GITHUB_OUTPUT
           echo "build-nr=$(bb pdxinfo buildNumber)" >> $GITHUB_OUTPUT
-          echo "tag=$(bb release-tag)" >> $GITHUB_OUTPUT
+          echo "tag=$(bb automated-release tag)" >> $GITHUB_OUTPUT
+          echo "type=$(bb automated-release type)" >> $GITHUB_OUTPUT
 
       - name: Commit pxdinfo changes
         if: success()
@@ -128,9 +129,13 @@ jobs:
           artifacts: ${{ steps.build-release.outputs.zip-path }}
           commit: ${{ steps.latest-commit.outputs.sha }}
           tag: ${{ steps.build-release.outputs.tag }}
-          draft: true
           artifactErrorsFailBuild: true
           allowUpdates: true
+          draft: ${{ steps.build-release.outputs.type == 'draft' }}
+          prerelease: ${{ steps.build-release.outputs.type == 'prerelease' }}
           updateOnlyUnreleased: true
+          skipIfReleaseExists: ${{ steps.build-release.outputs.type == 'release' }}
           generateReleaseNotes: true
           omitBodyDuringUpdate: true
+          omitDraftDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
