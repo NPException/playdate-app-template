@@ -25,6 +25,15 @@ your project and maybe adjust the values in the `bb.edn`'s `config` section acco
 if necessary. If you also want the automated draft release when you push your changes to GitHub,
 you just need to copy the `.github` folder into your project as well.
 
+## Examples
+
+If you are looking for repositories that make use of this build process and automated
+releases, look no further. Here are some for you to check out:
+
+* [**Spin Cross fan edit GitHub repo**](https://github.com/NPException/pd-app-template-lua-example)  
+  A slightly modified version of jctwizard's brilliant little game "Spin Cross". Go get it on the official _[itch.io page](https://jctwizard.itch.io/spincross)_!
+* _TBD:_ `Spin Cross fennel port`
+
 ## Getting started with [Lua](https://www.lua.org/)
 
 All you need to do is to add a `main.lua` file in the `source` folder.  
