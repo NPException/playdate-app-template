@@ -34,13 +34,36 @@ releases, look no further. Here are some for you to check out:
   A slightly modified version of jctwizard's brilliant little game "Spin Cross". Go get it on the official _[itch.io page](https://jctwizard.itch.io/spincross)_!
 * _TBD:_ `Spin Cross fennel port`
 
-## Getting started with [Lua](https://www.lua.org/)
+## Getting started
 
-All you need to do is to add a `main.lua` file in the `source` folder.  
-By default, that file will serve as the starting point for the Playdate compiler
+Whether you want to write your game in Lua or Fennel, the setup is almost the same.  
+All that's required is a `main.lua` file in the `source` folder.
+By default, this file will serve as the starting point for the Playdate compiler
 when building your application.
 
-Here's a small code snippet you can add to `main.lua` to see some text on screen:
+When you want to use Fennel, remember that Fennel files will be compiled to Lua files
+of the same name, so `main.fnl` will become `main.lua`.
+
+Here's how you'd create a "Hello World" program in either language:
+
+<table>
+<tr>
+  <th>language</th>
+  <th>main file name</th>
+  <th>file content</th>
+</tr>
+<tr>
+<td>
+
+[Lua](https://www.lua.org/)
+
+</td>
+<td>
+
+`main.lua`
+
+</td>
+<td>
 
 ```lua
 function playdate.update()
@@ -48,30 +71,38 @@ function playdate.update()
 end
 ```
 
-## Getting started with [Fennel](https://fennel-lang.org/)
+</td>
+</tr>
+<tr>
+<td>
 
-All you need to do is to add a `main.fnl` file in the `source` folder.  
-Fennel files will be compiled to Lua files of the same name (f.e. `main.fnl -> main.lua`).  
-By default, that file will serve as the starting point for the Playdate compiler
-when building your application.
+[Fennel](https://fennel-lang.org/)
 
-Here's a small code snippet you can add to `main.fnl` to see text on screen:
+</td>
+<td>
+
+`main.fnl`
+
+</td>
+<td>
 
 ```fennel
 (fn playdate.update []
   (playdate.graphics.drawText "Hello *Fennel* _World_" 30 30))
 ```
 
-## Hey, you just wrote the same thing twice?!
+</td>
+</tr>
+</table>
 
-Pretty much, yes. This project template is set up in such a way that you can use both Lua and Fennel
+This project template is set up in such a way that you can even use both Lua and Fennel
 at the same time in your project if you want. For example if you want write your game in Fennel,
 but still want to use some of the amazing libraries for Playdate that are written in Lua.
-([Like Noble Engine!](https://noblerobot.com/nobleengine))
+(Like [Noble Engine](https://noblerobot.com/nobleengine)!)
 
 Just make sure you don't have Fennel and Lua files with the same name sit in the same directory.
 (for example having a `utils/text.lua` and `utils/text.fnl` file)  
-In such cases, the Lua file will be copied over the compiled Fennel file when the app is built.
+In such cases, the Lua file will overwrite the compiled Fennel file when the app is built.
 
 ## Building and testing
 
