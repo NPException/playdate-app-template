@@ -105,12 +105,18 @@ jobs:
         if: steps.check-fennel-files.outputs.is-fennel-project == 'true'
         run: brew install fennel
 
+      - name: Determine desired SDK version
+        id: sdk-version
+        if: steps.init-check.outputs.run == 'true'
+        run: |
+          echo "version=$(bb automated-release sdk)" >> $GITHUB_OUTPUT
+
       - name: Install Playdate SDK
         id: playdate
         if: steps.init-check.outputs.run == 'true'
         uses: pd-rs/get-playdate-sdk@0.3.3
         with:
-          version: latest # possible values: version `x.x.x` or `latest` by default
+          version: ${{ steps.sdk-version.outputs.version }} # possible values: version `x.x.x` or `latest` by default
 
       - name: Build release
         id: build-release
@@ -134,7 +140,7 @@ jobs:
         if: steps.init-check.outputs.run == 'true' && success()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: prepare release `v${{steps.build-release.outputs.version}} b${{steps.build-release.outputs.build-nr}}`
+          commit_message: prepare release `${{steps.build-release.outputs.version}} b${{steps.build-release.outputs.build-nr}}`
           file_pattern: ${{ steps.build-release.outputs.pdxinfo-path }}
 
       - name: Locate latest commit

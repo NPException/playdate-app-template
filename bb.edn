@@ -9,7 +9,7 @@
   (do (def config {
                    ; Name of the zip file when the `build-release` task is called.
                    ; Any key from the pdxinfo file can be used as placeholder.
-                   :release-name       "${name} v${version}_b${buildNumber}"
+                   :release-name       "${name} (${version} b${buildNumber})"
                    ; The location of the Playdate SDK. If this is empty, the build process
                    ; will try to get the path from the `PLAYDATE_SDK_PATH` environment variable.
                    :playdate-sdk-path  ""
@@ -37,13 +37,15 @@
                    :build-output       "./builds/"
                    ; Options that will be used by the automated GitHub release action (unused otherwise)
                    :automated-release  {
+                                        ; Which Playdate SDK version should be used when building an automated release.
+                                        ; Either use the version x.x.x directly, or "latest" to just used the latest version.
+                                        :sdk  "latest"
                                         ; When a GitHub release is created, this will be used as the tag.
                                         ; (the tag name will be cleaned up if necessary to conform to git tag name restrictions)
                                         ; If a release with the same tag already exists, the newly built
                                         ; `.pdx.zip` will be appended to its attachments.
                                         ; Any key from the pdxinfo file can be used as placeholder.
-                                        ; (Another useful example is "v${version}-b${buildNumber}")
-                                        :tag  "v${version}"
+                                        :tag  "${version}-b${buildNumber}"
                                         ; When a GitHub release is created, this will determine if the type of the release.
                                         ; Possible values are ["draft", "prerelease", "release"].
                                         ; "draft": Draft releases are only visible to the repo owner on GitHub.
@@ -55,7 +57,7 @@
                                         ;              with the same tag already exists, the release action will be skipped.
                                         ; (one possible approach is to set this to "release", and then only
                                         ;  increase the "version" in your pdxinfo once you want a release to happen)
-                                        :type "prerelease"}})
+                                        :type "release"}})
 
       ; validate automated-release type
       (let [accepted-release-types #{"draft" "prerelease" "release"}
