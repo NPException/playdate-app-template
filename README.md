@@ -146,11 +146,10 @@ This will build the project and pack everything up into a `.pdx.zip` file in a `
 ### Automatic GitHub release via GitHub action
 
 This template includes a GitHub action, which will create a new release (or update an existing
-one) for the current version in the `source/pdxinfo` file. By default, this action triggers whenever
+one, depending on how its configured) for the current version in the `source/pdxinfo` file. By default, this action triggers whenever
 changes within the `source` folder are pushed to the `main` branch. This then will automatically
 run `bb build-release` on one of GitHub's machines, and (if the build succeeds) upload a `.pdx.zip`
-file of your app to a GitHub draft release for your current version.  
-You can then manually publish, edit, or delete the release in the "Releases" section of your GitHub repo.
+file of your app to a GitHub release for your current version and build number.  
 See the `:automated-release` config section in `bb.edn` for a bit more details.
 
 If you don't want the automatic release build, you can just delete the `.github/workflows/auto-release.yml` file.
@@ -171,7 +170,7 @@ of each config key:
 | `:compiled-sources`   | The directory where the combination of compiled `.fnl` files and copies of all other files in the `:sources` directory will be put by the `compile` task. It is also the directory that is used as input for the Playdate compiler. If there are no `.fnl` files to compile, this directory is unused. |
 | `:main-file`          | A relative path to the Lua file with which the Playdate compiler will start compilation. This is usually the file which defines the `playdate.update()` function. (If your main Fennel file is `game.fnl`, then put `game.lua` as the main file.)                                                      |
 | `:build-output`       | The directory where the PDX app built by the Playdate compiler will be put.                                                                                                                                                                                                                            |
-| `:automated-release`  | Options that are use by the automated-release GitHub action. See the comments on that section in [bb.edn](/bb.edn#L39-L57) for details.                                                                                                                                                                |
+| `:automated-release`  | Options that are use by the automated-release GitHub action. See the comments on that section in [bb.edn](/bb.edn#L39-L60) for details.                                                                                                                                                                |
 
 ## Babashka tasks
 
