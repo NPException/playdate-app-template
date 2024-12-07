@@ -212,5 +212,5 @@ of your code)
 
 If you have any questions feel free to open an issue or contact me on social media:
 
-* Discord: [.npexception (formerly NPException#2597)](https://discordapp.com/users/107443773834797056)
+* Discord: [npexception42 (formerly NPException#2597)](https://discordapp.com/users/107443773834797056)
 * Twitter: [@NPException](https://twitter.com/NPException)
